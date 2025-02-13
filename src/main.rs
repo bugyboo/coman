@@ -1,3 +1,5 @@
+use std::io::{self, Read};
+
 use clap::{Parser, Subcommand};
 
 mod commands;
@@ -52,7 +54,12 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {    
+async fn main() -> Result<(), Box<dyn std::error::Error>> {   
+
+    let mut stdin_input = String::new();
+    if !atty::is(atty::Stream::Stdin) {
+        io::stdin().read_to_string(&mut stdin_input)?;
+    }     
     
     let args = Cli::parse();
     
@@ -64,7 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::request::run(command, verbose).await                  
         },
         Commands::Run { collection, endpoint, verbose } => {
-            commands::run::run(collection, endpoint, verbose).await
+            commands::run::run(collection, endpoint, verbose, stdin_input).await
         },
         Commands::Url { collection, endpoint } => {
             commands::url::run(collection, endpoint).await
