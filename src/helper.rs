@@ -1,7 +1,6 @@
 use std::{env, io::{self, Write}};
 
 use once_cell::sync::Lazy;
-use reqwest::header::HeaderMap;
 
 pub static COMAN_FILE : &str = "coman.json";
 
@@ -14,27 +13,6 @@ pub static HOME_DIR: Lazy<String> = Lazy::new(|| {
 pub static COMAN_JSON: Lazy<String> = Lazy::new(|| {
     env::var("COMAN_JSON").unwrap_or_else(|_| COMAN_FILE.to_string() )
 });
-
-pub fn parse_header(s: &str) -> Result<(String, String), String> {
-    let parts: Vec<&str> = s.splitn(2, ':').collect();
-    if parts.len() != 2 {
-        return Err(format!("Invalid header format: '{}'. Use KEY:VALUE", s));
-    }
-    Ok((
-        parts[0].trim().to_string(),
-        parts[1].trim().to_string(),
-    ))
-}
-
-pub fn build_header_map(headers: &[(String, String)]) -> HeaderMap {
-    let mut header_map = HeaderMap::new();
-    for (key, value) in headers {
-        if let Ok(header_name) = key.parse::<reqwest::header::HeaderName>() {
-            header_map.insert(header_name, value.parse().unwrap());
-        }
-    }
-    header_map
-}
 
 fn get_file_path() -> String {
     if COMAN_FILE != *COMAN_JSON {
