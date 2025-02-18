@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 use clap::Subcommand;
 use colored::Colorize;
@@ -9,13 +9,37 @@ use super::request::{RequestCommands, RequestData};
 #[derive(Clone)]
 #[derive(Subcommand)]
 pub enum ManagerCommands {
-    #[clap(about = "List all collections and endpoints")]
+    #[clap(about = "List collections and endpoints")]
     List {
         #[clap(short = 'c', long = "col", default_value = "", required = false)]
         col: String,
 
         #[clap(short, long, default_value = "false")]
         verbose: bool,
+    },
+    #[clap(about = "Update a collection or endpoint headers and body")]
+    Update {
+        collection: String,
+
+        #[clap(short = 'e', long, default_value = "", required = false)]
+        endpoint: String,
+
+        #[clap(
+            short = 'H',
+            long = "header",
+            value_parser = RequestData::parse_header,
+            value_name = "KEY:VALUE",
+            num_args = 1..,
+            required = false
+        )]
+        headers: Vec<(String, String)>,
+
+        #[clap(
+            short = 'B', long,
+            default_value = "",
+            required = false
+        )]
+        body: String,        
     },
     #[clap(about = "Delete a collection or endpoint")]
     Delete {
@@ -77,6 +101,10 @@ impl fmt::Display for ManagerCommands {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ManagerCommands::List { col, verbose } => write!(f, "List Command: col: '{}', verbose: {}", col, verbose),
+            ManagerCommands::Update { collection, endpoint, headers, body } => {
+                write!(f, "Update Command: collection: '{}', endpoint: '{}', headers: {:?}, body: '{}'",
+                    collection, endpoint, headers, body)
+            },
             ManagerCommands::Delete { collection, endpoint, yes } => {
                 write!(f, "Delete Command: collection: '{}', endpoint: '{}', yes: {}", collection, endpoint, yes)
             },
@@ -142,6 +170,8 @@ impl ManagerCommands {
     pub fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
 
         match self {
+
+            // List collections and endpoints
             Self::List { col, verbose } => {
                 let collections = Self::load_collections()?;
                 if collections.is_empty() {
@@ -188,6 +218,8 @@ impl ManagerCommands {
                     }
                 }
             },
+
+            // Delete a collection or endpoint
             Self::Delete { collection, endpoint , yes} => {
                 let collections = Self::load_collections()?;
                 let mut found = false;
@@ -236,6 +268,76 @@ impl ManagerCommands {
                 }
 
             },
+
+            // Update a collection or endpoint headers and body
+            Self::Update { collection, endpoint, headers, body } => {
+                let collections = Self::load_collections()?;
+                let mut found = false;
+                let collections: Vec<models::collection::Collection> = collections.into_iter().map(|c| {
+                    if c.name == *collection {
+                        found = true;
+                        let requests = c.requests.unwrap_or_default();
+                        let requests: Vec<models::collection::Request> = requests.into_iter().map(|r| {
+                            if r.name == *endpoint {
+                                let mut existing_headers: HashMap<String, String> = r.headers.into_iter().collect();
+                                for (key, value) in headers.iter() {
+                                    existing_headers.entry(key.clone()).or_insert(value.clone());
+                                }
+                                let body = body.clone();
+                                models::collection::Request {
+                                    name: r.name,
+                                    endpoint: r.endpoint,
+                                    method: r.method,
+                                    headers: existing_headers.into_iter().collect(),
+                                    body: if body.trim().is_empty() {
+                                        None
+                                    } else {
+                                        Some(body)
+                                    }
+                                }
+                            } else {
+                                r
+                            }
+                        }).collect();
+                        if endpoint.is_empty() {
+                            let mut existing_headers: HashMap<String, String> = c.headers.into_iter().collect();
+                            for (key, value) in headers.iter() {
+                                existing_headers.entry(key.clone()).or_insert(value.clone());
+                            }                                                       
+                            models::collection::Collection {
+                                name: c.name,
+                                url: c.url,
+                                headers: existing_headers.into_iter().collect(),
+                                requests: Some(requests),
+                            }
+                        } else {
+                            // check if requests has endpoint name                            
+                            if !requests.is_empty() && requests.iter().find(|r| r.name == *endpoint).is_none() {
+                                eprintln!("No endpoint {} found in collection {}", endpoint, collection);
+                            }
+                            models::collection::Collection {
+                                name: c.name,
+                                url: c.url,
+                                headers: c.headers,
+                                requests: Some(requests),
+                            }
+                        }
+                    } else {
+                        c
+                    }
+                }).collect();
+                if !found {
+                    eprintln!("Collection '{}' not found.", collection);
+                    return Ok(());
+                }
+                let result = helper::write_json_to_file(&collections);
+                match result {
+                    Ok(_) => println!("Collection updated successfully!" ),
+                    Err(e) => eprintln!("Error updating collection: {}", e),
+                }
+            }
+
+            // Add a new collection or update an existing one
             Self::Col { name, url, headers } => {
                 let mut collections = Self::load_collections()?;
                 // Check if a collection with the same name already exists
@@ -263,6 +365,8 @@ impl ManagerCommands {
                     }
                 }
             },
+
+            // Add a new endpoint to a collection or update an existing one
             Self::Endpoint { collection, name, path, method, headers, body } => {
                 let collections = Self::load_collections()?;
                 let mut found = false;

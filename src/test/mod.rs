@@ -39,7 +39,7 @@ pub mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_04_run_req() {
         let collection = "test";
         let endpoint = "ver";
@@ -108,7 +108,7 @@ pub mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_09_req_get() {
 
         let request_data = RequestData {
@@ -129,7 +129,7 @@ pub mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_10_req_post() {
 
         let request_data = RequestData {
@@ -147,7 +147,7 @@ pub mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_11_req_put() {
 
         let request_data = RequestData {
@@ -165,7 +165,7 @@ pub mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_12_req_delete() {
 
         let request_data = RequestData {
@@ -183,7 +183,7 @@ pub mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_13_req_patch() {
 
         let request_data = RequestData {
@@ -244,7 +244,7 @@ pub mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "current_thread")]
     async fn test_17_run_req() {
         let collection = "test2";
         let endpoint = "ver";

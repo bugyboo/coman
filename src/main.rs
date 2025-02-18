@@ -21,6 +21,15 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
 
+    #[command(about = "List APIs Collections")]
+    List {
+        #[clap(short = 'c', long = "col", default_value = "", required = false)]
+        col: String,
+
+        #[clap(short, long, default_value = "false")]
+        verbose: bool,
+    },
+
     #[command(about = "Managing APIs")]
     Man {
         #[command(subcommand)]
@@ -55,6 +64,7 @@ enum Commands {
 impl fmt::Display for Commands {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Commands::List { col, verbose } => write!(f, "List Command: {} - {}", col, verbose),
             Commands::Man { command } => write!(f, "Man Command: {}", command),
             Commands::Req { command, verbose } => {
                 write!(f, "Req Command: {} (verbose: {})", command, verbose)
@@ -111,6 +121,9 @@ impl Commands {
     async fn run(&self, stdin_input: String) -> Result<(), Box<dyn std::error::Error>> {
 
         match self {
+            Commands::List { col, verbose } => {
+                ManagerCommands::List { col: col.clone(), verbose: *verbose }.run()
+            },
             Commands::Man { command } => {
                 command.run()
             },

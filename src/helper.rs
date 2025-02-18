@@ -49,3 +49,49 @@ pub fn confirm(prompt: &str) -> bool {
     std::io::stdin().read_line(&mut response).ok();
     response.to_lowercase().starts_with('y')
 }
+
+
+#[cfg(test)]
+pub mod tests {
+
+
+    #[test]
+    fn test_01_get_file_path() {
+
+        //set env variable
+        std::env::set_var("COMAN_JSON", "test.json");
+
+        let path = "test.json".to_string();
+
+        assert_eq!(super::get_file_path(), path);
+    }
+
+    #[test]
+    fn test_02_write_json_to_file() {
+
+        let collection = crate::models::collection::Collection {
+            name: "coman".to_owned(),
+            url: "http://localhost:8080".to_owned(),
+            headers: vec![],
+            requests: None,
+        };
+
+        let data = vec![collection];
+        let result = super::write_json_to_file(&data);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_03_read_json_from_file() {
+
+        let result: Result<Vec<crate::models::collection::Collection>, Box<dyn std::error::Error>> = super::read_json_from_file();
+
+        if let Err(e) = &result {
+            println!("Error: {}", e);
+        }
+
+        assert!(result.is_ok());
+    }
+
+}
