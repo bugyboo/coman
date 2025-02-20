@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Copy)]
 pub enum Method {
     GET,
     POST,
@@ -20,7 +20,7 @@ pub struct Collection {
     pub requests: Option<Vec<Request>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Request {
     pub name: String,
     pub endpoint: String,

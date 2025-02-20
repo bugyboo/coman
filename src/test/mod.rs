@@ -236,8 +236,65 @@ pub mod tests {
     }
 
     #[test]
-    fn test_16_list_collections() {
-        let command = ManagerCommands::List { col: "test2".to_owned(), verbose: true };
+    fn test_16_update_endpoint() {
+        let command = ManagerCommands::Update {
+            collection: "test2".to_owned(),
+            endpoint: "ver".to_owned(),
+            url: "/ver2".to_owned(),
+            headers: vec![],
+            body: "".to_owned(),            
+        };
+
+        let result = command.run();
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_17_copy_endpoint() {
+        let command = ManagerCommands::Copy {
+            collection: "test2".to_owned(),
+            endpoint: "ver2".to_owned(),
+            new_name: "ver3".to_owned(),
+        };
+
+        let result = command.run();
+
+        assert!(result.is_ok());
+    }
+
+
+    #[test]
+    fn test_18_copy_collection() {
+        let command = ManagerCommands::Copy {
+            collection: "test2".to_owned(),
+            endpoint: "".to_owned(),
+            new_name: "test3".to_owned(),
+        };
+
+        let result = command.run();
+
+        assert!(result.is_ok());
+    }    
+
+    #[test]
+    fn test_19_update_collection() {
+        let command = ManagerCommands::Update {
+            collection: "test3".to_owned(),
+            endpoint: "".to_owned(),
+            url: "http://localhost:8081".to_owned(),
+            headers: vec![],
+            body: "".to_owned(),
+        };
+
+        let result = command.run();
+
+        assert!(result.is_ok());
+    }    
+
+    #[test]
+    fn test_20_list_collections() {
+        let command = ManagerCommands::List { col: "test3".to_owned(), verbose: true };
 
         let result = command.run();
 
@@ -245,7 +302,7 @@ pub mod tests {
     }
 
     #[tokio::test(flavor = "current_thread")]
-    async fn test_17_run_req() {
+    async fn test_21_run_req() {
         let collection = "test2";
         let endpoint = "ver";
         let verbose = true;
@@ -262,7 +319,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_18_delete_collection() {
+    fn test_22_delete_collection() {
 
         let command = ManagerCommands::Delete {
             collection: "test2".to_owned(),
@@ -274,4 +331,18 @@ pub mod tests {
 
         assert!(result.is_ok());
     }
+
+    #[test]
+    fn test_23_delete_collection() {
+
+        let command = ManagerCommands::Delete {
+            collection: "test3".to_owned(),
+            endpoint: "".to_owned(),
+            yes: true
+        };
+
+        let result = command.run();
+
+        assert!(result.is_ok());
+    }    
 }

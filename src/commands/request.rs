@@ -242,6 +242,7 @@ impl RequestCommands {
         match response {
             Ok(resp) => {
                 if verbose {
+                    println!("{:?}", resp.version());
                     self.print_request_method(&resp.url().to_string(), resp.status());
                 }
                 Self::print_request_response(resp, verbose).await
