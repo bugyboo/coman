@@ -102,7 +102,7 @@ impl RequestCommands {
         println!("{}", body.italic());
     }
 
-    async fn print_request_response(response: reqwest::Response, verbose: bool) -> Result<(), Box<dyn std::error::Error>> {
+    async fn print_request_response(response: reqwest::Response, verbose: bool) -> Result<String, Box<dyn std::error::Error>> {
         if verbose {
             println!("{}", "Response Headers:".to_string().bold().bright_blue());
             for (key, value) in response.headers().iter() {
@@ -124,7 +124,7 @@ impl RequestCommands {
             println!("{}", body.italic());
         }
 
-        Ok(())
+        Ok("".to_string())
     }
 
     fn colorize_status(status: StatusCode) -> ColoredString {
@@ -235,7 +235,7 @@ impl RequestCommands {
         }
     }
 
-    pub async fn run (&self, verbose: bool, stdin_input: String) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn run (&self, verbose: bool, stdin_input: String) -> Result<String, Box<dyn std::error::Error>> {
 
         let response = Self::execute_request(self, verbose, stdin_input).await;
 

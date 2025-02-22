@@ -81,7 +81,7 @@ impl fmt::Display for Commands {
 
 impl Commands {
 
-    pub fn run_url (collection: &str, endpoint: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn run_url (collection: &str, endpoint: &str) -> Result<String, Box<dyn std::error::Error>> {
 
         let command = ManagerCommands::get_endpoint_command(&collection, &endpoint)
             .ok_or_else(|| format!("Endpoint not found: {}/{}", collection, endpoint))?;
@@ -101,12 +101,13 @@ impl Commands {
                 String::new()
             };
 
-        println!("coman req -v {} {} {} {}", command.to_string().to_lowercase() , data.url, headers_url, body_flag);
+        let url = format!("{} {} {} {}", command.to_string().to_lowercase() , data.url, headers_url, body_flag);
+        println!("coman req -v {}", url);
 
-        Ok(())
+        Ok(url)
     }
 
-    pub async fn run_request (collection: &str, endpoint: &str, verbose: &bool, stdin_input: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn run_request (collection: &str, endpoint: &str, verbose: &bool, stdin_input: &str) -> Result<String, Box<dyn std::error::Error>> {
 
         if *verbose {
             println!("Running collection '{}' with endpoint '{}'", collection, endpoint);
@@ -118,7 +119,7 @@ impl Commands {
         command.run(*verbose, stdin_input.to_owned()).await
     }
 
-    async fn run(&self, stdin_input: String) -> Result<(), Box<dyn std::error::Error>> {
+    async fn run(&self, stdin_input: String) -> Result<String, Box<dyn std::error::Error>> {
 
         match self {
             Commands::List { col, verbose } => {
@@ -153,7 +154,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = args.command.run(stdin_input).await;
 
     match result {
-        Ok(()) => {},
+        Ok(_s) => {},
         Err(e) => {
             eprintln!("Failed to run command : {} \n {}", args.command, e);
             std::process::exit(1);

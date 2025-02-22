@@ -21,13 +21,17 @@ pub mod tests {
             name: "ver".to_owned(),
             path: "/ver".to_owned(),
             method: "GET".to_owned(),
-            headers: vec![],
+            headers: vec![("Content-type".to_owned(), "application/json".to_owned())],
             body: "".to_owned(),
         };
 
         let result = command.run();
 
         assert!(result.is_ok());
+
+        let url = Commands::run_url("test", "ver");
+
+        assert!(url.is_ok() && url.unwrap().contains("get http://localhost:8080/ver -H \"Content-type: application/json\""));
     }
 
     #[test]
@@ -92,6 +96,10 @@ pub mod tests {
         let result = command.run();
 
         assert!(result.is_ok());
+
+        let url = Commands::run_url("test", "ver");
+
+        assert!(url.is_err());
     }
 
     #[test]
@@ -217,7 +225,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_15_create_endpoint_wuth_header_and_body() {
+    fn test_15_create_endpoint_with_header_and_body() {
         let command = ManagerCommands::Endpoint {
             collection: "test2".to_owned(),
             name: "ver".to_owned(),
@@ -233,6 +241,14 @@ pub mod tests {
         let result = command.run();
 
         assert!(result.is_ok());
+
+        let url = Commands::run_url("test2", "ver");
+
+        assert!(url.is_ok() && url.as_ref().unwrap().contains("post http://localhost:8080/ver")
+            && url.as_ref().unwrap().contains("-H \"Accept: application/json\"")
+            && url.as_ref().unwrap().contains("-H \"Authorization: Bearer token\"")
+            && url.as_ref().unwrap().contains("-H \"Content-type: text/html\"")
+        );
     }
 
     #[test]
@@ -242,25 +258,41 @@ pub mod tests {
             endpoint: "ver".to_owned(),
             url: "/ver2".to_owned(),
             headers: vec![],
-            body: "".to_owned(),            
+            body: "".to_owned(),
         };
 
         let result = command.run();
 
         assert!(result.is_ok());
+
+        let url = Commands::run_url("test2", "ver");
+
+        assert!(url.is_ok() && url.as_ref().unwrap().contains("post http://localhost:8080/ver2")
+            && url.as_ref().unwrap().contains("-H \"Accept: application/json\"")
+            && url.as_ref().unwrap().contains("-H \"Authorization: Bearer token\"")
+            && url.as_ref().unwrap().contains("-H \"Content-type: text/html\"")
+        );
     }
 
     #[test]
     fn test_17_copy_endpoint() {
         let command = ManagerCommands::Copy {
             collection: "test2".to_owned(),
-            endpoint: "ver2".to_owned(),
+            endpoint: "ver".to_owned(),
             new_name: "ver3".to_owned(),
         };
 
         let result = command.run();
 
         assert!(result.is_ok());
+
+        let url = Commands::run_url("test2", "ver3");
+
+        assert!(url.is_ok() && url.as_ref().unwrap().contains("post http://localhost:8080/ver2")
+            && url.as_ref().unwrap().contains("-H \"Accept: application/json\"")
+            && url.as_ref().unwrap().contains("-H \"Authorization: Bearer token\"")
+            && url.as_ref().unwrap().contains("-H \"Content-type: text/html\"")
+        );
     }
 
 
@@ -275,7 +307,7 @@ pub mod tests {
         let result = command.run();
 
         assert!(result.is_ok());
-    }    
+    }
 
     #[test]
     fn test_19_update_collection() {
@@ -290,7 +322,7 @@ pub mod tests {
         let result = command.run();
 
         assert!(result.is_ok());
-    }    
+    }
 
     #[test]
     fn test_20_list_collections() {
@@ -344,5 +376,5 @@ pub mod tests {
         let result = command.run();
 
         assert!(result.is_ok());
-    }    
+    }
 }

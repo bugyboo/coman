@@ -9,14 +9,14 @@ pub enum Method {
     POST,
     PUT,
     DELETE,
-    PATCH,   
+    PATCH,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Collection {
     pub name: String,
     pub url: String,
-    pub headers: Vec<(String, String)>,    
+    pub headers: Vec<(String, String)>,
     pub requests: Option<Vec<Request>>,
 }
 
