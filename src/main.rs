@@ -43,6 +43,9 @@ enum Commands {
 
         #[clap(short, long, default_value = "false")]
         verbose: bool,
+
+        #[clap(short, long, required = false, default_value = "false")]
+        stream: bool,
     },
 
     #[command(about = "Running collections endpoints")]
@@ -52,6 +55,9 @@ enum Commands {
 
         #[clap(short, long, default_value = "false")]
         verbose: bool,
+
+        #[clap(short, long, required = false, default_value = "false")]
+        stream: bool,
     },
 
     #[command(about = "Print request URL with headers and body")]
@@ -66,11 +72,12 @@ impl fmt::Display for Commands {
         match self {
             Commands::List { col, verbose } => write!(f, "List Command: {} - {}", col, verbose),
             Commands::Man { command } => write!(f, "Man Command: {}", command),
-            Commands::Req { command, verbose } => {
-                write!(f, "Req Command: {} (verbose: {})", command, verbose)
+            Commands::Req { command, verbose, stream} => {
+                write!(f, "Req Command: {} (verbose: {}) (stream: {})", command, verbose, stream)
             },
-            Commands::Run { collection, endpoint, verbose } => {
-                write!(f, "Run Command: collection: '{}', endpoint: '{}', verbose: {}", collection, endpoint, verbose)
+            Commands::Run { collection, endpoint, verbose, stream } => {
+                write!(f, "Run Command: collection: '{}', endpoint: '{}', verbose: {}, stream: {}",
+                collection, endpoint, verbose, stream)
             },
             Commands::Url { collection, endpoint } => {
                 write!(f, "Url Command: collection: '{}', endpoint: '{}'", collection, endpoint)
@@ -107,7 +114,7 @@ impl Commands {
         Ok(url)
     }
 
-    pub async fn run_request (collection: &str, endpoint: &str, verbose: &bool, stdin_input: &str) -> Result<String, Box<dyn std::error::Error>> {
+    pub async fn run_request (collection: &str, endpoint: &str, verbose: &bool, stdin_input: &str, stream: &bool) -> Result<String, Box<dyn std::error::Error>> {
 
         if *verbose {
             println!("Running collection '{}' with endpoint '{}'", collection, endpoint);
@@ -116,7 +123,7 @@ impl Commands {
         let command = ManagerCommands::get_endpoint_command(&collection, &endpoint)
             .ok_or_else(|| format!("Endpoint not found: {}/{}", collection, endpoint))?;
 
-        command.run(*verbose, stdin_input.to_owned()).await
+        command.run(*verbose, stdin_input.to_owned(), *stream).await
     }
 
     async fn run(&self, stdin_input: String) -> Result<String, Box<dyn std::error::Error>> {
@@ -128,11 +135,11 @@ impl Commands {
             Commands::Man { command } => {
                 command.run()
             },
-            Commands::Req { command, verbose } => {
-                command.run(*verbose, stdin_input).await
+            Commands::Req { command, verbose, stream } => {
+                command.run(*verbose, stdin_input, *stream).await
             },
-            Commands::Run { collection, endpoint, verbose } => {
-                Self::run_request(collection, endpoint, verbose, &stdin_input).await
+            Commands::Run { collection, endpoint, verbose, stream } => {
+                Self::run_request(collection, endpoint, verbose, &stdin_input, stream).await
             },
             Commands::Url { collection, endpoint } => {
                 Self::run_url(collection, endpoint)

@@ -5,6 +5,7 @@ use colored::{ColoredString, Colorize};
 use reqwest::header::HeaderMap;
 use reqwest::{redirect::Policy, ClientBuilder, StatusCode};
 use serde_json::Value;
+use futures::stream::StreamExt;
 
 #[derive(Args, Clone, Debug)]
 pub struct RequestData {
@@ -21,7 +22,7 @@ pub struct RequestData {
     pub headers: Vec<(String, String)>,
 
     #[clap(short, long, default_value = "", required = false)]
-    pub body: String
+    pub body: String,
 }
 
 impl RequestData {
@@ -102,7 +103,7 @@ impl RequestCommands {
         println!("{}", body.italic());
     }
 
-    async fn print_request_response(response: reqwest::Response, verbose: bool) -> Result<String, Box<dyn std::error::Error>> {
+    async fn print_request_response(response: reqwest::Response, verbose: bool, stream: bool) -> Result<String, Box<dyn std::error::Error>> {
         if verbose {
             println!("{}", "Response Headers:".to_string().bold().bright_blue());
             for (key, value) in response.headers().iter() {
@@ -110,18 +111,31 @@ impl RequestCommands {
             }
         }
 
-        let body = response.text().await?;
-
         if verbose {
             println!("\n{}", "Response Body:".to_string().bold().bright_blue());
         }
 
-        // Try parsing the body as JSON
-        if let Ok(json) = serde_json::from_str::<Value>(&body) {
-            let pretty = serde_json::to_string_pretty(&json)?;
-            println!("{}", pretty.green() );
+        if stream {
+            // Get the stream of bytes
+            let mut stream = response.bytes_stream();
+
+            // Process each chunk as it arrives
+            while let Some(chunk) = stream.next().await {
+                let chunk = chunk?; // Handle potential errors in the stream
+                let text = String::from_utf8_lossy(&chunk); // Convert bytes to string
+                print!("{}", text); // Print immediately as it arrives
+                std::io::stdout().flush()?; // Ensure output is flushed to terminal
+            }
         } else {
-            println!("{}", body.italic());
+
+            let body = response.text().await?;
+            //Try parsing the body as JSON
+            if let Ok(json) = serde_json::from_str::<Value>(&body) {
+                let pretty = serde_json::to_string_pretty(&json)?;
+                println!("{}", pretty.green() );
+            } else {
+                println!("{}", body.italic());
+            }
         }
 
         Ok("".to_string())
@@ -140,7 +154,7 @@ impl RequestCommands {
     fn prompt_missing_header_data(mut headers: Vec<(String, String)>) -> Vec<(String, String)> {
         for header in headers.iter_mut() {
             if header.1.contains(":?") {
-                print!("Header value for key '{}' is missing data. Please provide the correct value: ", header.0);
+                eprint!("Header value for key '{}' is missing data. Please provide the correct value: ", header.0);
                 io::stdout().flush().ok();
                 let mut new_value = String::new();
                 std::io::stdin().read_line(&mut new_value).expect("Failed to read header value");
@@ -152,7 +166,7 @@ impl RequestCommands {
 
     fn prompt_missing_body_data(mut body: String) -> String {
         while let Some(idx) = body.find(":?") {
-            print!("Missing data at position {} - {}. Please provide the correct value: ", idx, body);
+            eprint!("Missing data at position {} - {}. Please provide the correct value: ", idx, body);
             io::stdout().flush().ok();
             let mut replacement = String::new();
             std::io::stdin()
@@ -235,7 +249,7 @@ impl RequestCommands {
         }
     }
 
-    pub async fn run (&self, verbose: bool, stdin_input: String) -> Result<String, Box<dyn std::error::Error>> {
+    pub async fn run (&self, verbose: bool, stdin_input: String, stream: bool) -> Result<String, Box<dyn std::error::Error>> {
 
         let response = Self::execute_request(self, verbose, stdin_input).await;
 
@@ -245,7 +259,7 @@ impl RequestCommands {
                     println!("{:?}", resp.version());
                     self.print_request_method(&resp.url().to_string(), resp.status());
                 }
-                Self::print_request_response(resp, verbose).await
+                Self::print_request_response(resp, verbose, stream).await
             },
             Err(err) => {
                 Err(Box::new(err))

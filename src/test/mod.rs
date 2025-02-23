@@ -49,12 +49,14 @@ pub mod tests {
         let endpoint = "ver";
         let verbose = true;
         let stdin_input = "";
+        let stream = false;
 
         let result = Commands::run_request(
             collection,
             endpoint,
             &verbose,
             stdin_input,
+            &stream
         );
 
         assert!(result.await.is_ok());
@@ -132,7 +134,7 @@ pub mod tests {
             data: request_data
         };
 
-        let result = command.run(true, "".to_owned()).await;
+        let result = command.run(true, "".to_owned(), false).await;
 
         assert!(result.is_ok());
     }
@@ -150,7 +152,7 @@ pub mod tests {
             data: request_data
         };
 
-        let result = command.run(true, "".to_owned()).await;
+        let result = command.run(true, "".to_owned(), false).await;
 
         assert!(result.is_ok());
     }
@@ -168,7 +170,7 @@ pub mod tests {
             data: request_data
         };
 
-        let result = command.run(true, "".to_owned()).await;
+        let result = command.run(true, "".to_owned(), false).await;
 
         assert!(result.is_ok());
     }
@@ -186,7 +188,7 @@ pub mod tests {
             data: request_data
         };
 
-        let result = command.run(true, "".to_owned()).await;
+        let result = command.run(true, "".to_owned(), false).await;
 
         assert!(result.is_ok());
     }
@@ -204,7 +206,7 @@ pub mod tests {
             data: request_data
         };
 
-        let result = command.run(true, "".to_owned()).await;
+        let result = command.run(true, "".to_owned(), false).await;
 
         assert!(result.is_ok());
     }
@@ -339,12 +341,14 @@ pub mod tests {
         let endpoint = "ver";
         let verbose = true;
         let stdin_input = "";
+        let stream = false;
 
         let result = Commands::run_request(
             collection,
             endpoint,
             &verbose,
             stdin_input,
+            &stream,
         );
 
         assert!(result.await.is_ok());

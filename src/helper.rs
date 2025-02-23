@@ -43,7 +43,7 @@ pub fn read_json_from_file<T: serde::de::DeserializeOwned>() -> Result<T, Box<dy
 }
 
 pub fn confirm(prompt: &str) -> bool {
-    print!("{} (y/n): ", prompt);
+    eprint!("{} (y/n): ", prompt);
     io::stdout().flush().ok();
     let mut response = String::new();
     std::io::stdin().read_line(&mut response).ok();

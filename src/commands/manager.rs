@@ -168,7 +168,7 @@ impl ManagerCommands {
                         }
                         merged.into_iter().collect()
                     },
-                    body: req.body.clone().unwrap_or_default(),
+                    body: req.body.clone().unwrap_or_default()
                 };
                 match req.method {
                     models::collection::Method::GET => RequestCommands::Get { data },
@@ -427,7 +427,7 @@ impl ManagerCommands {
                                 None
                             } else {
                                 Some(body.clone())
-                            }
+                            },
                         };
                         let requests = c.requests.unwrap_or_default();
                         let requests: Vec<models::collection::Request> = requests
