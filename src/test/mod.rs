@@ -281,6 +281,7 @@ pub mod tests {
         let command = ManagerCommands::Copy {
             collection: "test2".to_owned(),
             endpoint: "ver".to_owned(),
+            to_col: false,
             new_name: "ver3".to_owned(),
         };
 
@@ -303,6 +304,7 @@ pub mod tests {
         let command = ManagerCommands::Copy {
             collection: "test2".to_owned(),
             endpoint: "".to_owned(),
+            to_col: false,
             new_name: "test3".to_owned(),
         };
 

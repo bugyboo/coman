@@ -60,6 +60,10 @@ pub enum ManagerCommands {
 
         #[clap(short = 'e', long, default_value = "", required = false)]
         endpoint: String,
+
+        #[clap(short = 'c', long, default_value = "false", required = false)]
+        to_col: bool,
+
         new_name: String,
     },
     #[clap(about = "Add a new collection")]
@@ -119,8 +123,8 @@ impl fmt::Display for ManagerCommands {
             ManagerCommands::Delete { collection, endpoint, yes } => {
                 write!(f, "Delete Command: collection: '{}', endpoint: '{}', yes: {}", collection, endpoint, yes)
             },
-            ManagerCommands::Copy { collection, endpoint, new_name } => {
-                write!(f, "Copy Command: collection: '{}', endpoint: '{}', new_name: '{}'", collection, endpoint, new_name)
+            ManagerCommands::Copy { collection, endpoint,to_col, new_name } => {
+                write!(f, "Copy Command: collection: '{}', endpoint: '{}', To Col {}, new_name: '{}'", collection, endpoint, to_col, new_name)
             },
             ManagerCommands::Col { name, url, headers } => {
                 write!(f, "Col Command: name: '{}', url: '{}', headers: {:?}", name, url, headers)
@@ -299,7 +303,7 @@ impl ManagerCommands {
             },
 
             // Copy a collection or endpoint
-            Self::Copy { collection, endpoint, new_name } => {
+            Self::Copy { collection, endpoint, to_col, new_name } => {
                 let mut collections = Self::load_collections()?;
 
                 if  let Some(col) = collections.iter().find(|c| c.name == *collection) {
@@ -310,11 +314,23 @@ impl ManagerCommands {
                     } else {
                         if let Some(req) = col.requests.as_ref().and_then(|r| r.iter().find(|r| r.name == *endpoint)) {
                             let mut new_req = req.clone();
-                            new_req.name = new_name.clone();
-                            let mut new_requests = col.requests.clone().unwrap_or_default();
-                            new_requests.push(new_req);
-                            if let Some(col_mut) = collections.iter_mut().find(|c| c.name == *collection) {
-                                col_mut.requests = Some(new_requests);
+
+                            if *to_col {
+                                if let Some(to_collection) = collections.iter_mut().find(|c| c.name == *new_name) {
+                                    let mut new_requests = to_collection.requests.clone().unwrap_or_default();
+                                    new_requests.push(new_req);
+                                    to_collection.requests = Some(new_requests);
+                                } else {
+                                    return Err("Copy to Collection not found.".into());
+                                }
+                            } else {
+                                new_req.name = new_name.clone();
+                                let mut new_requests = col.requests.clone().unwrap_or_default();
+                                new_requests.push(new_req);
+
+                                if let Some(col_mut) = collections.iter_mut().find(|c| c.name == *collection) {
+                                    col_mut.requests = Some(new_requests);
+                                }
                             }
 
                         } else {
