@@ -14,6 +14,9 @@ pub enum ManagerCommands {
         #[clap(short = 'c', long = "col", default_value = "", required = false)]
         col: String,
 
+        #[clap(short = 'q', long = "quiet", default_value = "false")]
+        quite: bool,
+
         #[clap(short, long, default_value = "false")]
         verbose: bool,
     },
@@ -115,7 +118,7 @@ pub enum ManagerCommands {
 impl fmt::Display for ManagerCommands {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ManagerCommands::List { col, verbose } => write!(f, "List Command: col: '{}', verbose: {}", col, verbose),
+            ManagerCommands::List { col, quite, verbose } => write!(f, "List Command: col: '{}', quite: {}, verbose: {}", col, quite, verbose),
             ManagerCommands::Update { collection, endpoint, url: _, headers, body } => {
                 write!(f, "Update Command: collection: '{}', endpoint: '{}', headers: {:?}, body: '{}'",
                     collection, endpoint, headers, body)
@@ -206,7 +209,7 @@ impl ManagerCommands {
         match self {
 
             // List collections and endpoints
-            Self::List { col, verbose } => {
+            Self::List { col, quite, verbose } => {
                 let collections = Self::load_collections()?;
                 if collections.is_empty() {
                     return Err("No collections found.".into());
@@ -215,7 +218,10 @@ impl ManagerCommands {
                         if col != "" && &collection.name != col {
                             continue;
                         }
-                        println!("[{}] - {}", collection.name.bright_yellow(), collection.url);
+                        println!("[{}] - {}", collection.name.bright_magenta() , collection.url);
+                        if *quite {
+                            continue;
+                        }
                         if !collection.headers.is_empty() {
                             println!("  Headers:");
                             for (key, value) in &collection.headers {

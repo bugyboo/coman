@@ -26,6 +26,9 @@ enum Commands {
         #[clap(short = 'c', long = "col", default_value = "", required = false)]
         col: String,
 
+        #[clap(short = 'q', long = "quiet", default_value = "false")]
+        quite: bool,        
+
         #[clap(short, long, default_value = "false")]
         verbose: bool,
     },
@@ -70,7 +73,7 @@ enum Commands {
 impl fmt::Display for Commands {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Commands::List { col, verbose } => write!(f, "List Command: {} - {}", col, verbose),
+            Commands::List { col, quite, verbose } => write!(f, "List Command: {} - {} - {}", col, quite, verbose),
             Commands::Man { command } => write!(f, "Man Command: {}", command),
             Commands::Req { command, verbose, stream} => {
                 write!(f, "Req Command: {} (verbose: {}) (stream: {})", command, verbose, stream)
@@ -129,8 +132,8 @@ impl Commands {
     async fn run(&self, stdin_input: String) -> Result<String, Box<dyn std::error::Error>> {
 
         match self {
-            Commands::List { col, verbose } => {
-                ManagerCommands::List { col: col.clone(), verbose: *verbose }.run()
+            Commands::List { col, quite, verbose } => {
+                ManagerCommands::List { col: col.clone(), verbose: *verbose, quite: *quite }.run()
             },
             Commands::Man { command } => {
                 command.run()
