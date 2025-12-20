@@ -14,8 +14,11 @@ pub enum ManagerCommands {
         #[clap(short = 'c', long = "col", default_value = "", required = false)]
         col: String,
 
+        #[clap(short = 'e', long = "endpoint", default_value = "", required = false)]
+        endpoint: String,
+
         #[clap(short = 'q', long = "quiet", default_value = "false")]
-        quite: bool,
+        quiet: bool,
 
         #[clap(short, long, default_value = "false")]
         verbose: bool,
@@ -118,7 +121,7 @@ pub enum ManagerCommands {
 impl fmt::Display for ManagerCommands {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ManagerCommands::List { col, quite, verbose } => write!(f, "List Command: col: '{}', quite: {}, verbose: {}", col, quite, verbose),
+            ManagerCommands::List { col, endpoint, quiet, verbose } => write!(f, "List Command: col: '{}', endpoint: '{}', quiet: {}, verbose: {}", col, endpoint, quiet, verbose),
             ManagerCommands::Update { collection, endpoint, url: _, headers, body } => {
                 write!(f, "Update Command: collection: '{}', endpoint: '{}', headers: {:?}, body: '{}'",
                     collection, endpoint, headers, body)
@@ -209,7 +212,7 @@ impl ManagerCommands {
         match self {
 
             // List collections and endpoints
-            Self::List { col, quite, verbose } => {
+            Self::List { col, endpoint, quiet, verbose } => {
                 let collections = Self::load_collections()?;
                 if collections.is_empty() {
                     return Err("No collections found.".into());
@@ -219,7 +222,7 @@ impl ManagerCommands {
                             continue;
                         }
                         println!("[{}] - {}", collection.name.bright_magenta() , collection.url);
-                        if *quite {
+                        if *quiet {
                             continue;
                         }
                         if !collection.headers.is_empty() {
@@ -230,6 +233,9 @@ impl ManagerCommands {
                         }
                         if let Some(requests) = collection.requests {
                             for request in requests {
+                                if endpoint != "" && &request.name != endpoint {
+                                    continue;
+                                }
                                 println!("  [{}] {} - {} - {} - {}",
                                     request.name.bright_yellow(),
                                     request.method.to_string().bright_green(),

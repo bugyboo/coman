@@ -5,11 +5,54 @@ Coman is a simple API manager designed to streamline API management and request 
 - **Collections Management**: Store APIs grouped in collections where each collection can have a base URL.
 - **Endpoint Management**: Each endpoint is relative to its parent collection's URL. Endpoints can have multiple headers and a body.
 - **Header Merging**: Collections can have default headers used by their endpoints. If an endpoint defines the same header as its parent collection, the endpoint header will override the collection header.
-- **Command Memory**: Coman has a few subcommands and options easy to remember.
-- **Presist Collection**: Coman saves a json file on home directory.
+- **Command Memory**: Coman has a few subcommands and options that are easy to remember.
+- **Persist Collections**: Coman saves a JSON file in the home directory.
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Main Commands](#main-commands)
+- [Global Options](#global-options)
+- [Command Details](#command-details)
+- [Examples](#examples)
+- [Additional Resources](#additional-resources)
+
+## Installation
+
+### Prerequisites
+
+- Rust (latest stable version recommended)
+
+### Building from Source
+
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd coman
+   ```
+
+2. Build the project:
+   ```bash
+   cargo build --release
+   ```
+
+3. The binary will be available at `target/release/coman`.
+
+Alternatively, you can run it directly with:
+```bash
+cargo run --release -- <args>
+```
+
+## Usage
+
+```bash
+coman [OPTIONS] <COMMAND>
+```
 
 ## Main Commands
 
+- **list**: List APIs Collections
 - **man**: Managing APIs
 - **req**: Sending requests
 - **run**: Running collections endpoints
@@ -18,53 +61,151 @@ Coman is a simple API manager designed to streamline API management and request 
 
 ## Global Options
 
-- `-h, --help`     Print help
-- `-V, --version`  Print version
+- `-h, --help`: Print help
+- `-V, --version`: Print version
 
-## Details for Each Command
+## Command Details
+
+### List APIs Collections (`list`)
+
+List all collections and endpoints.
+
+**Usage**:
+```bash
+coman list [OPTIONS]
+```
+
+**Options**:
+- `-c, --col <COL>`: Specify a collection (default: all)
+- `-e, --endpoint <ENDPOINT>`: Specify an endpoint (default: all)
+- `-q, --quiet`: Quiet mode
+- `-v, --verbose`: Verbose output
+- `-h, --help`: Print help
 
 ### Managing APIs (`man`)
 
-Commands:
-- **list**: List all collections and endpoints. 
-    ` Use: -c for a specific collection.`
-- **delete**: Delete a collection or endpoint. 
-    `Example: coman delete colname -c endpoint. if endpoint not specified then delete collection.`
-- **col**: Add a new collection. 
-    `Example: coman man col test http://localhost.`
-- **endpoint**: Add a new endpoint to a collection. 
-    `Example: coman man endpoint test /hello.`
-- **help**: Print this message or the help of the given subcommand(s).
-
-Options:
-- `-v, --verbose`  
-- `-h, --help`     Print help
-
-### Running Collections Endpoints (`run`)
+Manage API collections and endpoints.
 
 **Usage**:
-- **collection-name** **endpoint-name**
-Options:
-- `-v, --verbose`
+```bash
+coman man <COMMAND>
+```
+
+**Commands**:
+- **list**: List collections and endpoints
+- **update**: Update a collection or endpoint headers and body
+- **delete**: Delete a collection or endpoint
+- **copy**: Copy a collection or endpoint
+- **col**: Add a new collection
+- **endpoint**: Add a new endpoint to a collection
+- **help**: Print this message or the help of the given subcommand(s)
+
+**Options**:
+- `-h, --help`: Print help
 
 ### Sending Requests (`req`)
 
-**Usage**:  
-Commands:
-- **get**
-    - `Example: coman req get http://localhost/hello`
-    - `Example: coman req get http://localhost/hello -H "Accept: application/json`
-- **post**
-    - `Example: coman req post http://localhost/hello -b "World!"`    
-- **put**     
-- **delete**  
-- **patch**   
+Send HTTP requests.
 
-Options:
-- `-v, --verbose`  
-- `-h, --help`     Print help
+**Usage**:
+```bash
+coman req [OPTIONS] <COMMAND>
+```
+
+**Commands**:
+- **get**
+- **post**
+- **put**
+- **delete**
+- **patch**
+- **help**: Print this message or the help of the given subcommand(s)
+
+**Options**:
+- `-v, --verbose`: Verbose output
+- `-s, --stream`: Stream the response
+- `-h, --help`: Print help
+
+### Running Collections Endpoints (`run`)
+
+Run endpoints from collections.
+
+**Usage**:
+```bash
+coman run [OPTIONS] <COLLECTION> <ENDPOINT>
+```
+
+**Options**:
+- `-v, --verbose`: Verbose output
+- `-s, --stream`: Stream the response
+- `-h, --help`: Print help
+
+### Print Request URL (`url`)
+
+Print the request URL with headers and body.
+
+**Usage**:
+```bash
+coman url <COLLECTION> <ENDPOINT>
+```
+
+**Options**:
+- `-h, --help`: Print help
+
+## Examples
+
+### Managing Collections
+
+- Add a new collection:
+  ```bash
+  coman man col myapi http://api.example.com
+  ```
+
+- Add an endpoint to a collection:
+  ```bash
+  coman man endpoint myapi /users
+  ```
+
+- List all collections:
+  ```bash
+  coman list
+  ```
+
+- List endpoints in a specific collection:
+  ```bash
+  coman list -c myapi
+  ```
+
+### Sending Requests
+
+- Send a GET request:
+  ```bash
+  coman req get http://api.example.com/users
+  ```
+
+- Send a POST request with a body:
+  ```bash
+  coman req post http://api.example.com/users -b '{"name": "John"}'
+  ```
+
+- Send a request with headers:
+  ```bash
+  coman req get http://api.example.com/users -H "Authorization: Bearer token"
+  ```
+
+### Running Endpoints
+
+- Run an endpoint from a collection:
+  ```bash
+  coman run myapi users
+  ```
 
 ## Additional Resources
 
 For more help, use the `help` command with any of the subcommands:
+
+```bash
+coman help
+coman man help
+coman req help
+```
 

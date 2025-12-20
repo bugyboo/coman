@@ -36,7 +36,7 @@ pub mod tests {
 
     #[test]
     fn test_03_list_collections() {
-        let command = ManagerCommands::List { col: "test".to_owned(), quite: false, verbose: true };
+        let command = ManagerCommands::List { col: "test".to_owned(), endpoint: "".to_owned(), quiet: false, verbose: true };
 
         let result = command.run();
 
@@ -330,7 +330,7 @@ pub mod tests {
 
     #[test]
     fn test_20_list_collections() {
-        let command = ManagerCommands::List { col: "test3".to_owned(), quite: false, verbose: true };
+        let command = ManagerCommands::List { col: "test3".to_owned(), endpoint: "".to_owned(), quiet: false, verbose: true };
 
         let result = command.run();
 
