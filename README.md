@@ -1,10 +1,10 @@
-<div align="center">
+
   ____                            
  / ___|___  _ __ ___   __ _ _ __  
 | |   / _ \| '_ ` _ \ / _` | '_ \ 
 | |__| (_) | | | | | | (_| | | | |
  \____\___/|_| |_| |_|\__,_|_| |_|
-</div>
+
 # Coman
 
 Coman is a simple API manager designed to streamline API management and request sending. Its key features include:
