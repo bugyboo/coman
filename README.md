@@ -212,7 +212,25 @@ coman url <COLLECTION> <ENDPOINT>
   coman run myapi users
   ```
 
-## Additional Resources
+### Pipe operation
+
+Coman supports reading request body from standard input when piping data. This is useful for sending JSON payloads or other data directly from files or other commands.
+
+- Send JSON data from a file as the request body:
+  ```bash
+  cat data.json | coman run myapi send
+  ```
+
+- Pipe output from another command as the request body:
+  ```bash
+  echo '{"key": "value"}' | coman run myapi create
+  ```
+
+When data is piped to coman, it will override any body defined in the endpoint configuration.
+
+### Limitations
+
+- Coman can't delete headers or body after created. Instead, you can delete the endpoint.
 
 For more help, use the `help` command with any of the subcommands:
 

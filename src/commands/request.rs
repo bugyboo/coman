@@ -144,9 +144,8 @@ impl RequestCommands {
     fn colorize_status(status: StatusCode) -> ColoredString {
         match status.as_u16() {
             200..=299 => status.to_string().bold().bright_green(),
-            300..=399 => status.to_string().bold().bright_yellow(),
-            400..=499 => status.to_string().bold().bright_red(),
-            500..=599 => status.to_string().bold().bright_magenta(),
+            300..=499 => status.to_string().bold().bright_yellow(),
+            500..=599 => status.to_string().bold().bright_red(),
             _ => status.to_string().white(),
         }
     }
