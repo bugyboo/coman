@@ -141,7 +141,7 @@ impl RequestCommands {
         Ok("".to_string())
     }
 
-    fn colorize_status(status: StatusCode) -> ColoredString {
+    pub fn colorize_status(status: StatusCode) -> ColoredString {
         match status.as_u16() {
             200..=299 => status.to_string().bold().bright_green(),
             300..=499 => status.to_string().bold().bright_yellow(),
@@ -187,7 +187,7 @@ impl RequestCommands {
         header_map
     }
 
-    async fn execute_request(&self, verbose: bool, stdin_input: String) -> Result<reqwest::Response, reqwest::Error> {
+    pub async fn execute_request(&self, verbose: bool, stdin_input: String) -> Result<reqwest::Response, reqwest::Error> {
 
         let data = self.get_data();
 

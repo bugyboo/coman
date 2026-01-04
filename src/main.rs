@@ -70,7 +70,12 @@ enum Commands {
     Url {
         collection: String,
         endpoint: String,
-    }
+    },
+
+    #[command(about = "Run tests")]
+    Test {
+        collection: String,
+    },
 }
 
 impl fmt::Display for Commands {
@@ -88,6 +93,9 @@ impl fmt::Display for Commands {
             Commands::Url { collection, endpoint } => {
                 write!(f, "Url Command: collection: '{}', endpoint: '{}'", collection, endpoint)
             },
+            Commands::Test { collection } => {
+                write!(f, "Test Command: collection: '{}'", collection)
+            }
         }
     }
 }
@@ -149,6 +157,9 @@ impl Commands {
             },
             Commands::Url { collection, endpoint } => {
                 Self::run_url(collection, endpoint)
+            },
+            Commands::Test { collection } => {
+                test::run_tests(collection).await
             }
         }
     }
