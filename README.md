@@ -70,6 +70,7 @@ coman [OPTIONS] <COMMAND>
 - **req**: Sending requests
 - **run**: Running collections endpoints
 - **url**: Print request URL with headers and body
+- **test**: Run tests on collections
 - **help**: Print this message or the help of the given subcommand(s)
 
 ## Global Options
