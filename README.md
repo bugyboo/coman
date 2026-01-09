@@ -226,7 +226,7 @@ Coman supports reading request body from standard input when piping data. This i
   ```bash
   echo '{"key": "value"}' | coman run myapi create
   coman run myapi stream -s < file.bin
-  coman run myapi stream -s < file.bin // multi-part
+  coman run myapi stream < file.bin // multi-part
   ```
 
 When data is piped to coman, it will override any body defined in the endpoint configuration.
