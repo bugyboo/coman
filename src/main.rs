@@ -122,13 +122,13 @@ impl Commands {
                 String::new()
             };
 
-        let url = format!("{} {} {} {}", command.to_string().to_lowercase() , data.url, headers_url, body_flag);
+        let url = format!("{} '{}' {} {}", command.to_string().to_lowercase() , data.url, headers_url, body_flag);
         println!("coman req -v {}", url);
 
         Ok(url)
     }
 
-    pub async fn run_request (collection: &str, endpoint: &str, verbose: &bool, stdin_input: &str, stream: &bool) -> Result<String, Box<dyn std::error::Error>> {
+    pub async fn run_request (collection: &str, endpoint: &str, verbose: &bool, stdin_input: &Vec<u8>, stream: &bool) -> Result<String, Box<dyn std::error::Error>> {
 
         if *verbose {
             println!("Running collection '{}' with endpoint '{}'", collection, endpoint);
@@ -140,7 +140,7 @@ impl Commands {
         command.run(*verbose, stdin_input.to_owned(), *stream).await
     }
 
-    async fn run(&self, stdin_input: String) -> Result<String, Box<dyn std::error::Error>> {
+    async fn run(&self, stdin_input: Vec<u8>) -> Result<String, Box<dyn std::error::Error>> {
 
         match self {
             Commands::List { col, endpoint, quiet, verbose } => {
@@ -168,9 +168,9 @@ impl Commands {
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-    let mut stdin_input = String::new();
+    let mut stdin_input = Vec::new();
     if !atty::is(atty::Stream::Stdin) {
-        io::stdin().read_to_string(&mut stdin_input)?;
+        io::stdin().read_to_end(&mut stdin_input)?;
     }
 
     let args = Cli::parse();

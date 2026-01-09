@@ -4,8 +4,10 @@ use clap::{Args, Subcommand};
 use colored::{ColoredString, Colorize};
 use reqwest::header::HeaderMap;
 use reqwest::{redirect::Policy, ClientBuilder, StatusCode};
+use reqwest::multipart::{self, Part};
 use serde_json::Value;
 use futures::stream::StreamExt;
+use infer;
 
 #[derive(Args, Clone, Debug)]
 pub struct RequestData {
@@ -187,16 +189,45 @@ impl RequestCommands {
         header_map
     }
 
-    pub async fn execute_request(&self, verbose: bool, stdin_input: String) -> Result<reqwest::Response, reqwest::Error> {
+    /// Checks if the Vec<u8> is valid UTF-8 (likely text) or not (binary).
+    fn is_text_data(data: &Vec<u8>) -> bool {
+        std::str::from_utf8(data).is_ok()
+    }    
+
+    pub async fn execute_request(&self, verbose: bool, stdin_input: Vec<u8>, stream: bool) -> Result<reqwest::Response, Box<dyn std::error::Error>> {
 
         let data = self.get_data();
 
         let current_url = Self::prompt_missing_body_data(data.url.clone());
         let headers = Self::prompt_missing_header_data(data.headers.clone());
+
+        let is_text = Self::is_text_data(&stdin_input);
         let body = if stdin_input.is_empty() {
             Self::prompt_missing_body_data(data.body.clone())
+        } else if is_text {
+            // Convert to string for text processing
+            let text = String::from_utf8_lossy(&stdin_input).to_string();
+            Self::prompt_missing_body_data(text)
         } else {
-            stdin_input
+            // Binary: skip text prompts, use as-is (but reqwest body will handle bytes)
+            String::new()  // Placeholder; we'll use bytes directly in the request
+        };
+
+        let part = if !stream && !stdin_input.is_empty() && !is_text {
+            // Binary data from stdin
+            let kind = infer::get(&stdin_input).ok_or_else(|| Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, "Unknown file type")))?;
+            let mime_type = kind.mime_type();    // e.g., "image/jpeg"
+            let extension = kind.extension();
+            let filename = format!("file.{}", extension);
+            Part::bytes(stdin_input.clone())
+                .file_name(filename)        // Mandatory for Spring FilePart
+                .mime_str(mime_type)?
+        } else if !stream && !stdin_input.is_empty() && is_text {
+            // Text data from stdin
+            Part::text(String::from_utf8_lossy(&stdin_input).to_string())
+        } else {
+            // Use body string
+            Part::text(body.clone())
         };
 
         if verbose {
@@ -206,7 +237,7 @@ impl RequestCommands {
 
         let client = ClientBuilder::new()
         .redirect(Policy::none())
-        .build()?;
+        .build().map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
 
         let headers = Self::build_header_map(&headers);
 
@@ -216,41 +247,91 @@ impl RequestCommands {
                     .headers(headers)
                     .send()
                     .await
+                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
             },
             Self::Post { .. } => {
-                client.post(&current_url)
-                    .headers(headers)
-                    .body(body)
-                    .send()
-                    .await
+                if !stdin_input.is_empty() {
+                    if stream {
+                        // For streaming binary data
+                        client.post(&current_url)
+                            .headers(headers)
+                            .body(stdin_input)  // Send as bytes
+                            .send()
+                            .await
+                            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                    } else {
+                        // For non-streaming binary or text data
+                        let form = multipart::Form::new()
+                            .part("file", part);
+                        client.post(&current_url)
+                            .headers(headers)
+                            .multipart(form)
+                            .send()
+                            .await                            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)                    }
+                } else {
+                    client.post(&current_url)
+                        .headers(headers)
+                        .body(body)
+                        .send()
+                        .await                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)                }
             },
             Self::Put { .. } => {
-                client.put(&current_url)
-                    .headers(headers)
-                    .body(body)
-                    .send()
-                    .await
+                if !stdin_input.is_empty() {
+                    client.put(&current_url)
+                        .headers(headers)
+                        .body(stdin_input)  // Send as bytes
+                        .send()
+                        .await
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                } else {
+                    client.put(&current_url)
+                        .headers(headers)
+                        .body(body)
+                        .send()
+                        .await
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                }
             },
             Self::Delete { .. } => {
-                client.delete(&current_url)
-                    .headers(headers)
-                    .body(body)
-                    .send()
-                    .await
+                if !stdin_input.is_empty() {
+                    client.delete(&current_url)
+                        .headers(headers)
+                        .body(stdin_input)  // Send as bytes
+                        .send()
+                        .await
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                } else {
+                    client.delete(&current_url)
+                        .headers(headers)
+                        .body(body)
+                        .send()
+                        .await
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                }
             },
             Self::Patch { .. } => {
-                client.patch(&current_url)
-                    .headers(headers)
-                    .body(body)
-                    .send()
-                    .await
+                if !stdin_input.is_empty() {
+                    client.patch(&current_url)
+                        .headers(headers)
+                        .body(stdin_input)  // Send as bytes
+                        .send()
+                        .await
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                } else {
+                    client.patch(&current_url)
+                        .headers(headers)
+                        .body(body)
+                        .send()
+                        .await
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                }
             },
         }
     }
 
-    pub async fn run (&self, verbose: bool, stdin_input: String, stream: bool) -> Result<String, Box<dyn std::error::Error>> {
+    pub async fn run (&self, verbose: bool, stdin_input: Vec<u8>, stream: bool) -> Result<String, Box<dyn std::error::Error>> {
 
-        let response = Self::execute_request(self, verbose, stdin_input).await;
+        let response = Self::execute_request(self, verbose, stdin_input, stream).await;
 
         match response {
             Ok(resp) => {
@@ -261,7 +342,7 @@ impl RequestCommands {
                 Self::print_request_response(resp, verbose, stream).await
             },
             Err(err) => {
-                Err(Box::new(err))
+                Err(err)
             }
         }
     }
