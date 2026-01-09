@@ -48,14 +48,14 @@ pub mod tests {
         let collection = "test";
         let endpoint = "ver";
         let verbose = true;
-        let stdin_input = "";
+        let stdin_input = Vec::new();
         let stream = false;
 
         let result = Commands::run_request(
             collection,
             endpoint,
             &verbose,
-            stdin_input,
+            &stdin_input,
             &stream
         );
 
@@ -134,7 +134,9 @@ pub mod tests {
             data: request_data
         };
 
-        let result = command.run(true, "".to_owned(), false).await;
+        let stdin_input = Vec::new();
+
+        let result = command.run(true, stdin_input, false).await;
 
         assert!(result.is_ok());
     }
@@ -152,7 +154,9 @@ pub mod tests {
             data: request_data
         };
 
-        let result = command.run(true, "".to_owned(), false).await;
+        let stdin_input = Vec::new();
+
+        let result = command.run(true, stdin_input, false).await;
 
         assert!(result.is_ok());
     }
@@ -170,7 +174,9 @@ pub mod tests {
             data: request_data
         };
 
-        let result = command.run(true, "".to_owned(), false).await;
+        let stdin_input = Vec::new();
+
+        let result = command.run(true, stdin_input, false).await;
 
         assert!(result.is_ok());
     }
@@ -188,7 +194,9 @@ pub mod tests {
             data: request_data
         };
 
-        let result = command.run(true, "".to_owned(), false).await;
+        let stdin_input = Vec::new();
+
+        let result = command.run(true, stdin_input, false).await;
 
         assert!(result.is_ok());
     }
@@ -206,7 +214,9 @@ pub mod tests {
             data: request_data
         };
 
-        let result = command.run(true, "".to_owned(), false).await;
+        let stdin_input = Vec::new();
+
+        let result = command.run(true, stdin_input, false).await;
 
         assert!(result.is_ok());
     }
@@ -342,14 +352,14 @@ pub mod tests {
         let collection = "test2";
         let endpoint = "ver";
         let verbose = true;
-        let stdin_input = "";
+        let stdin_input = Vec::new();
         let stream = false;
 
         let result = Commands::run_request(
             collection,
             endpoint,
             &verbose,
-            stdin_input,
+            &stdin_input,
             &stream,
         );
 
@@ -379,6 +389,10 @@ pub mod tests {
             yes: true
         };
 
+        let result = command.run(); 
+
+        assert!(result.is_ok());
+
     }
 }
 
@@ -396,8 +410,9 @@ pub async fn run_tests(collection_name: &str) -> Result<String, Box<dyn std::err
             let command = ManagerCommands::get_endpoint_command(collection_name, &request.name)
                 .ok_or_else(|| format!("Endpoint '{}' not found in collection '{}'", request.name, collection_name))?;
 
+            let stdin_input = Vec::new();
             // Run the request
-            match command.execute_request(false, "".to_string()).await {
+            match command.execute_request(false, stdin_input, false).await {
                 Ok(response) => {
                     // Print the test result in the same format as print_request_method
                     println!("[{}] {} - {}\n", command.to_string().bold().bright_yellow(),
