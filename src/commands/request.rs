@@ -111,9 +111,6 @@ impl RequestCommands {
             for (key, value) in response.headers().iter() {
                 println!("  {}: {:?}", key.to_string().bright_white(), value);
             }
-        }
-
-        if verbose {
             println!("\n{}", "Response Body:".to_string().bold().bright_blue());
         }
 
@@ -123,10 +120,9 @@ impl RequestCommands {
 
             // Process each chunk as it arrives
             while let Some(chunk) = stream.next().await {
-                let chunk = chunk?; // Handle potential errors in the stream
-                let text = String::from_utf8_lossy(&chunk); // Convert bytes to string
-                print!("{}", text); // Print immediately as it arrives
-                std::io::stdout().flush()?; // Ensure output is flushed to terminal
+                let chunk = chunk?;
+                std::io::stdout().write_all(&chunk)?;
+                std::io::stdout().flush()?;
             }
         } else {
 
