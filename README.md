@@ -20,6 +20,7 @@ Coman is a simple API manager designed to streamline API management and request 
 - **Header Merging**: Collections can have default headers used by their endpoints. If an endpoint defines the same header as its parent collection, the endpoint header will override the collection header.
 - **Command Memory**: Coman has a few subcommands and options that are easy to remember.
 - **Persist Collections**: Coman saves a JSON file in the home directory.
+- **Pretty JSON output**: By default, API results are treated as JSON unless the streaming option is defined.
 
 ## Table of Contents
 
@@ -136,7 +137,7 @@ coman req [OPTIONS] <COMMAND>
 
 **Options**:
 - `-v, --verbose`: Verbose output
-- `-s, --stream`: Stream the response
+- `-s, --stream`: Stream the request/response (read bytes from stdin and send as the request body or multipart data to the endpoint)
 - `-h, --help`: Print help
 
 ### Running Collections Endpoints (`run`)
@@ -150,7 +151,7 @@ coman run [OPTIONS] <COLLECTION> <ENDPOINT>
 
 **Options**:
 - `-v, --verbose`: Verbose output
-- `-s, --stream`: Stream the response
+- `-s, --stream`: Stream the request/response (output response as bytes)
 - `-h, --help`: Print help
 
 ### Print Request URL (`url`)
@@ -172,21 +173,25 @@ coman url <COLLECTION> <ENDPOINT>
 - Add a new collection:
   ```bash
   coman man col myapi http://api.example.com
+  coman man col myapi "http://api.example.com" -H "Content-Type: application/json" -H "x-api-key: xxx"
   ```
 
 - Add an endpoint to a collection:
   ```bash
   coman man endpoint myapi /users
+  coman man endpoint myapi "/users" -H "Content-Type: application/json" -m POST -b "Hello!"
   ```
 
 - List all collections:
   ```bash
   coman list
+  coman list -q
   ```
 
 - List endpoints in a specific collection:
   ```bash
   coman list -c myapi
+  coman list -vc myapi
   ```
 
 ### Sending Requests
@@ -226,7 +231,8 @@ Coman supports reading request body from standard input when piping data. This i
   ```bash
   echo '{"key": "value"}' | coman run myapi create
   coman run myapi stream -s < file.bin
-  coman run myapi stream < file.bin // multi-part
+  coman run myapi stream < file.bin // 'sent as multi-part'
+  coman run myapi post-data < file.json // 'send as body'
   ```
 
 When data is piped to coman, it will override any body defined in the endpoint configuration.
@@ -239,7 +245,9 @@ For more help, use the `help` command with any of the subcommands:
 
 ```bash
 coman help
-coman man help
-coman req help
+coman man --help
+coman req --help
 ```
+
+
 

@@ -106,7 +106,8 @@ impl RequestCommands {
     }
 
     async fn print_request_response(response: reqwest::Response, verbose: bool, stream: bool) -> Result<String, Box<dyn std::error::Error>> {
-        if verbose {
+               
+        if verbose && !stream {
             println!("{}", "Response Headers:".to_string().bold().bright_blue());
             for (key, value) in response.headers().iter() {
                 println!("  {}: {:?}", key.to_string().bright_white(), value);
@@ -237,92 +238,61 @@ impl RequestCommands {
 
         let headers = Self::build_header_map(&headers);
 
-        match self {
-            Self::Get { .. } => {
-                client.get(&current_url)
-                    .headers(headers)
-                    .send()
-                    .await
-                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-            },
-            Self::Post { .. } => {
-                if !stdin_input.is_empty() {
-                    if stream {
-                        // For streaming binary data
-                        client.post(&current_url)
+        let method = match self {
+            Self::Get { .. } => reqwest::Method::GET,
+            Self::Post { .. } => reqwest::Method::POST,
+            Self::Put { .. } => reqwest::Method::PUT,
+            Self::Delete { .. } => reqwest::Method::DELETE,
+            Self::Patch { .. } => reqwest::Method::PATCH,
+        };
+
+        if method == reqwest::Method::GET {
+            client.get(&current_url)
+                .headers(headers)
+                .send()
+                .await
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+        } else {
+            if !stdin_input.is_empty() {
+                if stream {
+                    // For streaming binary data
+                    client.request(method, &current_url)
+                        .headers(headers)
+                        .body(stdin_input)  // Send as bytes
+                        .send()
+                        .await
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                } else {
+                    // For non-streaming binary or text data
+                    if is_text {
+                        // Text data
+                        client.request(method, &current_url)
                             .headers(headers)
-                            .body(stdin_input)  // Send as bytes
+                            .body(String::from_utf8_lossy(&stdin_input).to_string())
                             .send()
                             .await
                             .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-                    } else {
-                        // For non-streaming binary or text data
+                    } else {                            
                         let form = multipart::Form::new()
                             .part("file", part);
-                        client.post(&current_url)
+                        client.request(method, &current_url)
                             .headers(headers)
                             .multipart(form)
                             .send()
-                            .await                            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)                    }
-                } else {
-                    client.post(&current_url)
-                        .headers(headers)
-                        .body(body)
-                        .send()
-                        .await                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)                }
-            },
-            Self::Put { .. } => {
-                if !stdin_input.is_empty() {
-                    client.put(&current_url)
-                        .headers(headers)
-                        .body(stdin_input)  // Send as bytes
-                        .send()
-                        .await
-                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-                } else {
-                    client.put(&current_url)
-                        .headers(headers)
-                        .body(body)
-                        .send()
-                        .await
-                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                            .await                            
+                            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)   
+                    }                 
                 }
-            },
-            Self::Delete { .. } => {
-                if !stdin_input.is_empty() {
-                    client.delete(&current_url)
-                        .headers(headers)
-                        .body(stdin_input)  // Send as bytes
-                        .send()
-                        .await
-                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-                } else {
-                    client.delete(&current_url)
-                        .headers(headers)
-                        .body(body)
-                        .send()
-                        .await
-                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-                }
-            },
-            Self::Patch { .. } => {
-                if !stdin_input.is_empty() {
-                    client.patch(&current_url)
-                        .headers(headers)
-                        .body(stdin_input)  // Send as bytes
-                        .send()
-                        .await
-                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-                } else {
-                    client.patch(&current_url)
-                        .headers(headers)
-                        .body(body)
-                        .send()
-                        .await
-                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-                }
-            },
-        }
+            } else {
+                client.request(method, &current_url)
+                    .headers(headers)
+                    .body(body)
+                    .send()
+                    .await                        
+                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)                
+            }            
+        }       
+
     }
 
     pub async fn run (&self, verbose: bool, stdin_input: Vec<u8>, stream: bool) -> Result<String, Box<dyn std::error::Error>> {
@@ -331,7 +301,7 @@ impl RequestCommands {
 
         match response {
             Ok(resp) => {
-                if verbose {
+                if verbose && !stream {
                     println!("{:?}", resp.version());
                     self.print_request_method(&resp.url().to_string(), resp.status());
                 }
