@@ -178,8 +178,8 @@ coman url <COLLECTION> <ENDPOINT>
 
 - Add an endpoint to a collection:
   ```bash
-  coman man endpoint myapi /users
-  coman man endpoint myapi "/users" -H "Content-Type: application/json" -m POST -b "Hello!"
+  coman man endpoint myapi users /users
+  coman man endpoint myapi users "/users" -H "Content-Type: application/json" -m POST -b "Hello!"
   ```
 
 - List all collections:
