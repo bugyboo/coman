@@ -124,7 +124,7 @@ pub mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test(flavor = "current_thread")]
+    #[tokio::test]
     async fn test_09_req_get() {
         let request_data = RequestData {
             url: "http://localhost:8080/ver".to_owned(),
@@ -144,7 +144,7 @@ pub mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test(flavor = "current_thread")]
+    #[tokio::test]
     async fn test_10_req_post() {
         let request_data = RequestData {
             url: "http://localhost:8080/login".to_owned(),
@@ -161,7 +161,7 @@ pub mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test(flavor = "current_thread")]
+    #[tokio::test]
     async fn test_11_req_put() {
         let request_data = RequestData {
             url: "http://localhost:8080/user".to_owned(),
@@ -178,7 +178,7 @@ pub mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test(flavor = "current_thread")]
+    #[tokio::test]
     async fn test_12_req_delete() {
         let request_data = RequestData {
             url: "http://localhost:8080/user?id=test".to_owned(),
@@ -195,7 +195,7 @@ pub mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test(flavor = "current_thread")]
+    #[tokio::test]
     async fn test_13_req_patch() {
         let request_data = RequestData {
             url: "http://localhost:8080/user?id=test".to_owned(),
@@ -385,7 +385,7 @@ pub mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test(flavor = "current_thread")]
+    #[tokio::test]
     async fn test_21_run_req() {
         let collection = "test2";
         let endpoint = "ver";

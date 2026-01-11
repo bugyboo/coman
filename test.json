@@ -4,5 +4,20 @@
     "url": "http://localhost:8080",
     "headers": [],
     "requests": null
+  },
+  {
+    "name": "test2",
+    "url": "http://localhost:8080",
+    "headers": [
+      [
+        "Authorization",
+        "Bearer token"
+      ],
+      [
+        "Content-type",
+        "application/json"
+      ]
+    ],
+    "requests": null
   }
 ]
