@@ -1,15 +1,15 @@
 use core::fmt;
 use std::str::FromStr;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Copy)]
 pub enum Method {
-    GET,
-    POST,
-    PUT,
-    DELETE,
-    PATCH,
+    Get,
+    Post,
+    Put,
+    Delete,
+    Patch,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -40,11 +40,11 @@ impl FromStr for Method {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_uppercase().as_str() {
-            "GET" => Ok(Method::GET),
-            "POST" => Ok(Method::POST),
-            "PUT" => Ok(Method::PUT),
-            "DELETE" => Ok(Method::DELETE),
-            "PATCH" => Ok(Method::PATCH),
+            "GET" => Ok(Method::Get),
+            "POST" => Ok(Method::Post),
+            "PUT" => Ok(Method::Put),
+            "DELETE" => Ok(Method::Delete),
+            "PATCH" => Ok(Method::Patch),
             _ => Err(()),
         }
     }

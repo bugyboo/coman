@@ -1,8 +1,11 @@
-use std::{env, io::{self, Write}};
+use std::{
+    env,
+    io::{self, Write},
+};
 
 use once_cell::sync::Lazy;
 
-pub static COMAN_FILE : &str = "coman.json";
+pub static COMAN_FILE: &str = "coman.json";
 
 pub static HOME_DIR: Lazy<String> = Lazy::new(|| {
     env::var("HOME")
@@ -10,9 +13,8 @@ pub static HOME_DIR: Lazy<String> = Lazy::new(|| {
         .unwrap_or_else(|_| "/".to_string())
 });
 
-pub static COMAN_JSON: Lazy<String> = Lazy::new(|| {
-    env::var("COMAN_JSON").unwrap_or_else(|_| COMAN_FILE.to_string() )
-});
+pub static COMAN_JSON: Lazy<String> =
+    Lazy::new(|| env::var("COMAN_JSON").unwrap_or_else(|_| COMAN_FILE.to_string()));
 
 fn get_file_path() -> String {
     if COMAN_FILE != *COMAN_JSON {
@@ -28,7 +30,8 @@ pub fn write_json_to_file<T: serde::Serialize>(data: &T) -> Result<(), Box<dyn s
     Ok(())
 }
 
-pub fn read_json_from_file<T: serde::de::DeserializeOwned>() -> Result<T, Box<dyn std::error::Error>> {
+pub fn read_json_from_file<T: serde::de::DeserializeOwned>() -> Result<T, Box<dyn std::error::Error>>
+{
     let file_path = get_file_path();
     let path = std::path::Path::new(&file_path);
     if !path.exists() {
@@ -50,14 +53,11 @@ pub fn confirm(prompt: &str) -> bool {
     response.to_lowercase().starts_with('y')
 }
 
-
 #[cfg(test)]
 pub mod tests {
 
-
     #[test]
     fn test_01_get_file_path() {
-
         //set env variable
         std::env::set_var("COMAN_JSON", "test.json");
 
@@ -68,7 +68,6 @@ pub mod tests {
 
     #[test]
     fn test_02_write_json_to_file() {
-
         let collection = crate::models::collection::Collection {
             name: "coman".to_owned(),
             url: "http://localhost:8080".to_owned(),
@@ -84,8 +83,8 @@ pub mod tests {
 
     #[test]
     fn test_03_read_json_from_file() {
-
-        let result: Result<Vec<crate::models::collection::Collection>, Box<dyn std::error::Error>> = super::read_json_from_file();
+        let result: Result<Vec<crate::models::collection::Collection>, Box<dyn std::error::Error>> =
+            super::read_json_from_file();
 
         if let Err(e) = &result {
             println!("Error: {}", e);
@@ -93,5 +92,4 @@ pub mod tests {
 
         assert!(result.is_ok());
     }
-
 }
