@@ -23,17 +23,20 @@ pub mod tests {
             collection: "test".to_owned(),
             endpoint: "".to_owned(),
             yes: true,
-        }.run();
+        }
+        .run();
         let _ = ManagerCommands::Delete {
             collection: "test2".to_owned(),
             endpoint: "".to_owned(),
             yes: true,
-        }.run();
+        }
+        .run();
         let _ = ManagerCommands::Delete {
             collection: "test3".to_owned(),
             endpoint: "".to_owned(),
             yes: true,
-        }.run();
+        }
+        .run();
     }
 
     // ==========================================
@@ -42,7 +45,7 @@ pub mod tests {
 
     #[test]
     #[serial]
-    fn test_integration_collection_workflow() {
+    fn test_serial_02_integration_collection_workflow() {
         setup();
         cleanup();
 
@@ -69,7 +72,8 @@ pub mod tests {
         let url = Commands::run_url("test", "ver");
         assert!(url.is_ok(), "Failed to generate URL");
         assert!(
-            url.unwrap().contains("get 'http://localhost:8080/ver' -H \"Content-type: application/json\""),
+            url.unwrap()
+                .contains("get 'http://localhost:8080/ver' -H \"Content-type: application/json\""),
             "URL format mismatch"
         );
 
@@ -105,7 +109,7 @@ pub mod tests {
 
     #[test]
     #[serial]
-    fn test_integration_collection_with_headers() {
+    fn test_serial_03_integration_collection_with_headers() {
         setup();
 
         // Create collection with headers
@@ -202,12 +206,14 @@ pub mod tests {
             collection: "test2".to_owned(),
             endpoint: "".to_owned(),
             yes: true,
-        }.run();
+        }
+        .run();
         let _ = ManagerCommands::Delete {
             collection: "test3".to_owned(),
             endpoint: "".to_owned(),
             yes: true,
-        }.run();
+        }
+        .run();
     }
 
     // ==========================================
@@ -216,7 +222,7 @@ pub mod tests {
 
     #[test]
     #[serial]
-    fn test_delete_collection_not_found() {
+    fn test_serial_04_delete_collection_not_found() {
         setup();
         let command = ManagerCommands::Delete {
             collection: "notfound".to_owned(),
@@ -233,7 +239,7 @@ pub mod tests {
 
     #[tokio::test]
     #[serial]
-    #[ignore] // Requires localhost:8080 server
+    // #[ignore] // Requires localhost:8080 server
     async fn test_req_get() {
         setup();
         let request_data = RequestData {
@@ -252,7 +258,7 @@ pub mod tests {
 
     #[tokio::test]
     #[serial]
-    #[ignore] // Requires localhost:8080 server
+    // #[ignore] // Requires localhost:8080 server
     async fn test_req_post() {
         setup();
         let request_data = RequestData {
@@ -268,7 +274,7 @@ pub mod tests {
 
     #[tokio::test]
     #[serial]
-    #[ignore] // Requires localhost:8080 server
+    // #[ignore] // Requires localhost:8080 server
     async fn test_req_put() {
         setup();
         let request_data = RequestData {
@@ -284,7 +290,7 @@ pub mod tests {
 
     #[tokio::test]
     #[serial]
-    #[ignore] // Requires localhost:8080 server
+    // #[ignore] // Requires localhost:8080 server
     async fn test_req_delete() {
         setup();
         let request_data = RequestData {
@@ -300,7 +306,7 @@ pub mod tests {
 
     #[tokio::test]
     #[serial]
-    #[ignore] // Requires localhost:8080 server
+    // #[ignore] // Requires localhost:8080 server
     async fn test_req_patch() {
         setup();
         let request_data = RequestData {
@@ -316,17 +322,18 @@ pub mod tests {
 
     #[tokio::test(flavor = "current_thread")]
     #[serial]
-    #[ignore] // Requires localhost:8080 server
+    // #[ignore] // Requires localhost:8080 server
     async fn test_run_request() {
         setup();
-        
+
         // First create the collection and endpoint
         let _ = ManagerCommands::Col {
             name: "test".to_owned(),
             url: "http://localhost:8080".to_owned(),
             headers: vec![],
-        }.run();
-        
+        }
+        .run();
+
         let _ = ManagerCommands::Endpoint {
             collection: "test".to_owned(),
             name: "ver".to_owned(),
@@ -334,7 +341,8 @@ pub mod tests {
             method: "GET".to_owned(),
             headers: vec![("Content-type".to_owned(), "application/json".to_owned())],
             body: "".to_owned(),
-        }.run();
+        }
+        .run();
 
         let result = Commands::run_request("test", "ver", &true, &Vec::new(), &false).await;
         assert!(result.is_ok());
@@ -344,7 +352,8 @@ pub mod tests {
             collection: "test".to_owned(),
             endpoint: "".to_owned(),
             yes: true,
-        }.run();
+        }
+        .run();
     }
 }
 

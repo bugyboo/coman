@@ -210,8 +210,17 @@ impl RequestCommands {
     ) -> Result<reqwest::Response, Box<dyn std::error::Error>> {
         let data = self.get_data();
 
-        let current_url = Self::prompt_missing_body_data(data.url.clone());
-        let headers = Self::prompt_missing_header_data(data.headers.clone());
+        let current_url = if !stream {
+            Self::prompt_missing_body_data(data.url.clone())
+        } else {
+            data.url.clone()
+        };
+
+        let headers = if !stream {
+            Self::prompt_missing_header_data(data.headers.clone())
+        } else {
+            data.headers.clone()
+        };
 
         let is_text = Self::is_text_data(&stdin_input);
         let body = if stdin_input.is_empty() {

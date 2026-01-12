@@ -4,6 +4,7 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Copy)]
+#[serde(try_from = "String")]
 pub enum Method {
     Get,
     Post,
@@ -35,8 +36,18 @@ impl fmt::Display for Method {
     }
 }
 
+impl TryFrom<String> for Method {
+    type Error = String;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value
+            .parse()
+            .map_err(|_| format!("Invalid method: {}", value))
+    }
+}
+
 impl FromStr for Method {
-    type Err = ();
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_uppercase().as_str() {
@@ -45,7 +56,7 @@ impl FromStr for Method {
             "PUT" => Ok(Method::Put),
             "DELETE" => Ok(Method::Delete),
             "PATCH" => Ok(Method::Patch),
-            _ => Err(()),
+            _ => Err(format!("Invalid method: {}", s)),
         }
     }
 }
