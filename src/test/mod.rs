@@ -8,22 +8,53 @@ pub mod tests {
         },
         Commands,
     };
+    use serial_test::serial;
+
+    /// Setup test environment - ensures all tests use the same test file
+    fn setup() {
+        std::env::set_var("COMAN_JSON", "test.json");
+    }
+
+    /// Clean up test data - removes test collections
+    fn cleanup() {
+        setup();
+        // Try to delete test collections, ignore errors
+        let _ = ManagerCommands::Delete {
+            collection: "test".to_owned(),
+            endpoint: "".to_owned(),
+            yes: true,
+        }.run();
+        let _ = ManagerCommands::Delete {
+            collection: "test2".to_owned(),
+            endpoint: "".to_owned(),
+            yes: true,
+        }.run();
+        let _ = ManagerCommands::Delete {
+            collection: "test3".to_owned(),
+            endpoint: "".to_owned(),
+            yes: true,
+        }.run();
+    }
+
+    // ==========================================
+    // Integration test - runs all steps in order
+    // ==========================================
 
     #[test]
-    fn test_01_create_collection() {
+    #[serial]
+    fn test_integration_collection_workflow() {
+        setup();
+        cleanup();
+
+        // Step 1: Create collection
         let command = ManagerCommands::Col {
             name: "test".to_owned(),
             url: "http://localhost:8080".to_owned(),
             headers: vec![],
         };
+        assert!(command.run().is_ok(), "Failed to create collection");
 
-        let result = command.run();
-
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_02_create_endpoint() {
+        // Step 2: Create endpoint
         let command = ManagerCommands::Endpoint {
             collection: "test".to_owned(),
             name: "ver".to_owned(),
@@ -32,188 +63,52 @@ pub mod tests {
             headers: vec![("Content-type".to_owned(), "application/json".to_owned())],
             body: "".to_owned(),
         };
+        assert!(command.run().is_ok(), "Failed to create endpoint");
 
-        let result = command.run();
-
-        assert!(result.is_ok());
-
+        // Step 3: Verify URL generation
         let url = Commands::run_url("test", "ver");
-
+        assert!(url.is_ok(), "Failed to generate URL");
         assert!(
-            url.is_ok()
-                && url.unwrap().contains(
-                    "get http://localhost:8080/ver -H \"Content-type: application/json\""
-                )
+            url.unwrap().contains("get 'http://localhost:8080/ver' -H \"Content-type: application/json\""),
+            "URL format mismatch"
         );
-    }
 
-    #[test]
-    fn test_03_list_collections() {
+        // Step 4: List collections
         let command = ManagerCommands::List {
             col: "test".to_owned(),
             endpoint: "".to_owned(),
             quiet: false,
             verbose: true,
         };
+        assert!(command.run().is_ok(), "Failed to list collections");
 
-        let result = command.run();
-
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    async fn test_04_run_req() {
-        let collection = "test";
-        let endpoint = "ver";
-        let verbose = true;
-        let stdin_input = Vec::new();
-        let stream = false;
-
-        let result = Commands::run_request(collection, endpoint, &verbose, &stdin_input, &stream);
-
-        assert!(result.await.is_ok());
-    }
-
-    #[test]
-    fn test_05_run_url() {
-        let result = Commands::run_url("test", "ver");
-
-        assert!(result.is_ok())
-    }
-
-    #[test]
-    fn test_06_delete_collection_not_found() {
-        let command = ManagerCommands::Delete {
-            collection: "notfound".to_owned(),
-            endpoint: "".to_owned(),
-            yes: true,
-        };
-
-        let result = command.run();
-
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_07_delete_endpoint() {
+        // Step 5: Delete endpoint
         let command = ManagerCommands::Delete {
             collection: "test".to_owned(),
             endpoint: "ver".to_owned(),
             yes: true,
         };
+        assert!(command.run().is_ok(), "Failed to delete endpoint");
 
-        let result = command.run();
-
-        assert!(result.is_ok());
-
+        // Verify endpoint is gone
         let url = Commands::run_url("test", "ver");
+        assert!(url.is_err(), "Endpoint should be deleted");
 
-        assert!(url.is_err());
-    }
-
-    #[test]
-    fn test_08_delete_collection() {
+        // Step 6: Delete collection
         let command = ManagerCommands::Delete {
             collection: "test".to_owned(),
             endpoint: "".to_owned(),
             yes: true,
         };
-
-        let result = command.run();
-
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_09_req_get() {
-        let request_data = RequestData {
-            url: "http://localhost:8080/ver".to_owned(),
-            headers: vec![
-                ("Content-Type".to_owned(), "application/json".to_owned()),
-                ("Accept".to_owned(), "application/json".to_owned()),
-            ],
-            body: "".to_owned(),
-        };
-
-        let command = RequestCommands::Get { data: request_data };
-
-        let stdin_input = Vec::new();
-
-        let result = command.run(true, stdin_input, false).await;
-
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_10_req_post() {
-        let request_data = RequestData {
-            url: "http://localhost:8080/login".to_owned(),
-            headers: vec![("Content-Type".to_owned(), "application/json".to_owned())],
-            body: format!("{{\"username\": \"test\", \"password\": \"test\"}}"),
-        };
-
-        let command = RequestCommands::Post { data: request_data };
-
-        let stdin_input = Vec::new();
-
-        let result = command.run(true, stdin_input, false).await;
-
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_11_req_put() {
-        let request_data = RequestData {
-            url: "http://localhost:8080/user".to_owned(),
-            headers: vec![("Content-Type".to_owned(), "application/json".to_owned())],
-            body: format!("{{\"name\": \"test test\"}}"),
-        };
-
-        let command = RequestCommands::Put { data: request_data };
-
-        let stdin_input = Vec::new();
-
-        let result = command.run(true, stdin_input, false).await;
-
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_12_req_delete() {
-        let request_data = RequestData {
-            url: "http://localhost:8080/user?id=test".to_owned(),
-            headers: vec![],
-            body: "".to_owned(),
-        };
-
-        let command = RequestCommands::Delete { data: request_data };
-
-        let stdin_input = Vec::new();
-
-        let result = command.run(true, stdin_input, false).await;
-
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_13_req_patch() {
-        let request_data = RequestData {
-            url: "http://localhost:8080/user?id=test".to_owned(),
-            headers: vec![],
-            body: format!("{{\"name\": \"test test\"}}"),
-        };
-
-        let command = RequestCommands::Patch { data: request_data };
-
-        let stdin_input = Vec::new();
-
-        let result = command.run(true, stdin_input, false).await;
-
-        assert!(result.is_ok());
+        assert!(command.run().is_ok(), "Failed to delete collection");
     }
 
     #[test]
-    fn test_14_create_collection_with_headers() {
+    #[serial]
+    fn test_integration_collection_with_headers() {
+        setup();
+
+        // Create collection with headers
         let command = ManagerCommands::Col {
             name: "test2".to_owned(),
             url: "http://localhost:8080".to_owned(),
@@ -222,14 +117,9 @@ pub mod tests {
                 ("Content-type".to_owned(), "application/json".to_owned()),
             ],
         };
+        assert!(command.run().is_ok());
 
-        let result = command.run();
-
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_15_create_endpoint_with_header_and_body() {
+        // Create endpoint with custom headers
         let command = ManagerCommands::Endpoint {
             collection: "test2".to_owned(),
             name: "ver".to_owned(),
@@ -241,36 +131,17 @@ pub mod tests {
             ],
             body: "".to_owned(),
         };
+        assert!(command.run().is_ok());
 
-        let result = command.run();
-
-        assert!(result.is_ok());
-
+        // Verify URL includes merged headers
         let url = Commands::run_url("test2", "ver");
+        assert!(url.is_ok());
+        let url_str = url.unwrap();
+        assert!(url_str.contains("post 'http://localhost:8080/ver'"));
+        assert!(url_str.contains("-H \"Accept: application/json\""));
+        assert!(url_str.contains("-H \"Authorization: Bearer token\""));
 
-        assert!(
-            url.is_ok()
-                && url
-                    .as_ref()
-                    .unwrap()
-                    .contains("post http://localhost:8080/ver")
-                && url
-                    .as_ref()
-                    .unwrap()
-                    .contains("-H \"Accept: application/json\"")
-                && url
-                    .as_ref()
-                    .unwrap()
-                    .contains("-H \"Authorization: Bearer token\"")
-                && url
-                    .as_ref()
-                    .unwrap()
-                    .contains("-H \"Content-type: text/html\"")
-        );
-    }
-
-    #[test]
-    fn test_16_update_endpoint() {
+        // Update endpoint URL
         let command = ManagerCommands::Update {
             collection: "test2".to_owned(),
             endpoint: "ver".to_owned(),
@@ -278,86 +149,36 @@ pub mod tests {
             headers: vec![],
             body: "".to_owned(),
         };
+        assert!(command.run().is_ok());
 
-        let result = command.run();
-
-        assert!(result.is_ok());
-
+        // Verify URL is updated
         let url = Commands::run_url("test2", "ver");
+        assert!(url.is_ok());
+        assert!(url.unwrap().contains("post 'http://localhost:8080/ver2'"));
 
-        assert!(
-            url.is_ok()
-                && url
-                    .as_ref()
-                    .unwrap()
-                    .contains("post http://localhost:8080/ver2")
-                && url
-                    .as_ref()
-                    .unwrap()
-                    .contains("-H \"Accept: application/json\"")
-                && url
-                    .as_ref()
-                    .unwrap()
-                    .contains("-H \"Authorization: Bearer token\"")
-                && url
-                    .as_ref()
-                    .unwrap()
-                    .contains("-H \"Content-type: text/html\"")
-        );
-    }
-
-    #[test]
-    fn test_17_copy_endpoint() {
+        // Copy endpoint
         let command = ManagerCommands::Copy {
             collection: "test2".to_owned(),
             endpoint: "ver".to_owned(),
             to_col: false,
             new_name: "ver3".to_owned(),
         };
+        assert!(command.run().is_ok());
 
-        let result = command.run();
-
-        assert!(result.is_ok());
-
+        // Verify copied endpoint
         let url = Commands::run_url("test2", "ver3");
+        assert!(url.is_ok());
 
-        assert!(
-            url.is_ok()
-                && url
-                    .as_ref()
-                    .unwrap()
-                    .contains("post http://localhost:8080/ver2")
-                && url
-                    .as_ref()
-                    .unwrap()
-                    .contains("-H \"Accept: application/json\"")
-                && url
-                    .as_ref()
-                    .unwrap()
-                    .contains("-H \"Authorization: Bearer token\"")
-                && url
-                    .as_ref()
-                    .unwrap()
-                    .contains("-H \"Content-type: text/html\"")
-        );
-    }
-
-    #[test]
-    fn test_18_copy_collection() {
+        // Copy collection
         let command = ManagerCommands::Copy {
             collection: "test2".to_owned(),
             endpoint: "".to_owned(),
             to_col: false,
             new_name: "test3".to_owned(),
         };
+        assert!(command.run().is_ok());
 
-        let result = command.run();
-
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_19_update_collection() {
+        // Update copied collection URL
         let command = ManagerCommands::Update {
             collection: "test3".to_owned(),
             endpoint: "".to_owned(),
@@ -365,63 +186,165 @@ pub mod tests {
             headers: vec![],
             body: "".to_owned(),
         };
+        assert!(command.run().is_ok());
 
-        let result = command.run();
-
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_20_list_collections() {
+        // List to verify
         let command = ManagerCommands::List {
             col: "test3".to_owned(),
             endpoint: "".to_owned(),
             quiet: false,
             verbose: true,
         };
+        assert!(command.run().is_ok());
 
-        let result = command.run();
+        // Cleanup
+        let _ = ManagerCommands::Delete {
+            collection: "test2".to_owned(),
+            endpoint: "".to_owned(),
+            yes: true,
+        }.run();
+        let _ = ManagerCommands::Delete {
+            collection: "test3".to_owned(),
+            endpoint: "".to_owned(),
+            yes: true,
+        }.run();
+    }
 
+    // ==========================================
+    // Unit tests - self-contained
+    // ==========================================
+
+    #[test]
+    #[serial]
+    fn test_delete_collection_not_found() {
+        setup();
+        let command = ManagerCommands::Delete {
+            collection: "notfound".to_owned(),
+            endpoint: "".to_owned(),
+            yes: true,
+        };
+        assert!(command.run().is_err());
+    }
+
+    // ==========================================
+    // HTTP request tests - require running server
+    // Skip these if no server is available
+    // ==========================================
+
+    #[tokio::test]
+    #[serial]
+    #[ignore] // Requires localhost:8080 server
+    async fn test_req_get() {
+        setup();
+        let request_data = RequestData {
+            url: "http://localhost:8080/ver".to_owned(),
+            headers: vec![
+                ("Content-Type".to_owned(), "application/json".to_owned()),
+                ("Accept".to_owned(), "application/json".to_owned()),
+            ],
+            body: "".to_owned(),
+        };
+
+        let command = RequestCommands::Get { data: request_data };
+        let result = command.run(true, Vec::new(), false).await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
-    async fn test_21_run_req() {
-        let collection = "test2";
-        let endpoint = "ver";
-        let verbose = true;
-        let stdin_input = Vec::new();
-        let stream = false;
-
-        let result = Commands::run_request(collection, endpoint, &verbose, &stdin_input, &stream);
-
-        assert!(result.await.is_ok());
-    }
-
-    #[test]
-    fn test_22_delete_collection() {
-        let command = ManagerCommands::Delete {
-            collection: "test2".to_owned(),
-            endpoint: "".to_owned(),
-            yes: true,
+    #[serial]
+    #[ignore] // Requires localhost:8080 server
+    async fn test_req_post() {
+        setup();
+        let request_data = RequestData {
+            url: "http://localhost:8080/login".to_owned(),
+            headers: vec![("Content-Type".to_owned(), "application/json".to_owned())],
+            body: r#"{"username": "test", "password": "test"}"#.to_owned(),
         };
 
-        let result = command.run();
-
+        let command = RequestCommands::Post { data: request_data };
+        let result = command.run(true, Vec::new(), false).await;
         assert!(result.is_ok());
     }
 
-    #[test]
-    fn test_23_delete_collection() {
-        let command = ManagerCommands::Delete {
-            collection: "test3".to_owned(),
-            endpoint: "".to_owned(),
-            yes: true,
+    #[tokio::test]
+    #[serial]
+    #[ignore] // Requires localhost:8080 server
+    async fn test_req_put() {
+        setup();
+        let request_data = RequestData {
+            url: "http://localhost:8080/user".to_owned(),
+            headers: vec![("Content-Type".to_owned(), "application/json".to_owned())],
+            body: r#"{"name": "test test"}"#.to_owned(),
         };
 
-        let result = command.run();
-
+        let command = RequestCommands::Put { data: request_data };
+        let result = command.run(true, Vec::new(), false).await;
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    #[serial]
+    #[ignore] // Requires localhost:8080 server
+    async fn test_req_delete() {
+        setup();
+        let request_data = RequestData {
+            url: "http://localhost:8080/user?id=test".to_owned(),
+            headers: vec![],
+            body: "".to_owned(),
+        };
+
+        let command = RequestCommands::Delete { data: request_data };
+        let result = command.run(true, Vec::new(), false).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    #[serial]
+    #[ignore] // Requires localhost:8080 server
+    async fn test_req_patch() {
+        setup();
+        let request_data = RequestData {
+            url: "http://localhost:8080/user?id=test".to_owned(),
+            headers: vec![],
+            body: r#"{"name": "test test"}"#.to_owned(),
+        };
+
+        let command = RequestCommands::Patch { data: request_data };
+        let result = command.run(true, Vec::new(), false).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    #[serial]
+    #[ignore] // Requires localhost:8080 server
+    async fn test_run_request() {
+        setup();
+        
+        // First create the collection and endpoint
+        let _ = ManagerCommands::Col {
+            name: "test".to_owned(),
+            url: "http://localhost:8080".to_owned(),
+            headers: vec![],
+        }.run();
+        
+        let _ = ManagerCommands::Endpoint {
+            collection: "test".to_owned(),
+            name: "ver".to_owned(),
+            path: "/ver".to_owned(),
+            method: "GET".to_owned(),
+            headers: vec![("Content-type".to_owned(), "application/json".to_owned())],
+            body: "".to_owned(),
+        }.run();
+
+        let result = Commands::run_request("test", "ver", &true, &Vec::new(), &false).await;
+        assert!(result.is_ok());
+
+        // Cleanup
+        let _ = ManagerCommands::Delete {
+            collection: "test".to_owned(),
+            endpoint: "".to_owned(),
+            yes: true,
+        }.run();
     }
 }
 

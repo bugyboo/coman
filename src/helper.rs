@@ -161,8 +161,10 @@ pub fn confirm(prompt: &str) -> bool {
 
 #[cfg(test)]
 pub mod tests {
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_01_get_file_path() {
         //set env variable
         std::env::set_var("COMAN_JSON", "test.json");
@@ -173,7 +175,10 @@ pub mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_02_write_json_to_file() {
+        std::env::set_var("COMAN_JSON", "test.json");
+        
         let collection = crate::models::collection::Collection {
             name: "coman".to_owned(),
             url: "http://localhost:8080".to_owned(),
@@ -188,7 +193,10 @@ pub mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_03_read_json_from_file() {
+        std::env::set_var("COMAN_JSON", "test.json");
+        
         let result: Result<Vec<crate::models::collection::Collection>, Box<dyn std::error::Error>> =
             super::read_json_from_file();
 
