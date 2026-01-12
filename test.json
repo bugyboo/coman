@@ -3,6 +3,31 @@
     "name": "coman",
     "url": "http://localhost:8080",
     "headers": [],
-    "requests": null
+    "requests": [
+      {
+        "name": "getUsers",
+        "endpoint": "/users",
+        "method": "Get",
+        "headers": [
+          [
+            "Authorization",
+            "Bearer token"
+          ]
+        ],
+        "body": null
+      },
+      {
+        "name": "createUser",
+        "endpoint": "/users",
+        "method": "Post",
+        "headers": [
+          [
+            "Content-Type",
+            "application/json"
+          ]
+        ],
+        "body": "{\"name\": \"John Doe\",\"email\": \"john.doe@example.com\"}"
+      }
+    ]
   }
 ]
