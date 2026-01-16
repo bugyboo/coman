@@ -1,6 +1,6 @@
 [package]
 name = "coman"
-version = "1.1.3"
+version = "1.1.4"
 edition = "2021"
 
 [dependencies]
@@ -14,8 +14,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "macros"] }
 infer = "0.19"
-fs2 = "0.4"                   # Cross-platform file locking
-tempfile = "3"                # Atomic file writes via temp files
+tempfile = "3.24.0"
 
 [dev-dependencies]
 serial_test = "3"             # Run tests sequentially when needed
