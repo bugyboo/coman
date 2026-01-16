@@ -22,13 +22,14 @@ pub async fn run_tests(collection_name: &str) -> Result<String, Box<dyn std::err
             let stdin_input = Vec::new();
             // Run the request
             match command.execute_request(false, stdin_input, false).await {
-                Ok(response) => {
+                Ok((response, elapsed)) => {
                     // Print the test result in the same format as print_request_method
                     println!(
-                        "[{}] {} - {}\n",
+                        "[{}] {} - {} ({} ms)\n",
                         command.to_string().bold().bright_yellow(),
                         response.url().to_string().bold().bright_white(),
-                        RequestCommands::colorize_status(response.status())
+                        RequestCommands::colorize_status(response.status()),
+                        elapsed
                     );
                 }
                 Err(e) => {

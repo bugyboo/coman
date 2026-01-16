@@ -1,6 +1,7 @@
 use clap::{Args, Subcommand};
 use colored::{ColoredString, Colorize};
 use futures::stream::StreamExt;
+use indicatif::{ProgressBar, ProgressStyle};
 use infer;
 use reqwest::header::HeaderMap;
 use reqwest::multipart::{self, Part};
@@ -8,6 +9,7 @@ use reqwest::{redirect::Policy, ClientBuilder, StatusCode};
 use serde_json::Value;
 use std::fmt;
 use std::io::{self, Write};
+use std::time::Duration;
 
 #[derive(Args, Clone, Debug)]
 pub struct RequestData {
@@ -85,12 +87,13 @@ impl RequestCommands {
         }
     }
 
-    pub fn print_request_method(&self, url: &str, status: StatusCode) {
+    pub fn print_request_method(&self, url: &str, status: StatusCode, elapsed: u128) {
         println!(
-            "\n[{}] {} - {}\n",
+            "\n[{}] {} - {} ({} ms)\n",
             self.to_string().bold().bright_yellow(),
             url.to_string().bold().bright_white(),
-            Self::colorize_status(status)
+            Self::colorize_status(status),
+            elapsed
         );
     }
 
@@ -207,7 +210,7 @@ impl RequestCommands {
         verbose: bool,
         stdin_input: Vec<u8>,
         stream: bool,
-    ) -> Result<reqwest::Response, Box<dyn std::error::Error>> {
+    ) -> Result<(reqwest::Response, u128), Box<dyn std::error::Error>> {
         let data = self.get_data();
 
         let current_url = if !stream {
@@ -276,7 +279,20 @@ impl RequestCommands {
             Self::Patch { .. } => reqwest::Method::PATCH,
         };
 
-        if method == reqwest::Method::GET {
+        let pb = ProgressBar::new_spinner();
+
+        pb.set_style(
+            ProgressStyle::with_template("{spinner:.green} {elapsed} {msg}")
+                .unwrap()
+                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
+        );
+
+        pb.enable_steady_tick(Duration::from_millis(80));
+        pb.set_message("Executing Request...");
+
+        let start = std::time::Instant::now();
+
+        let resp = if method == reqwest::Method::GET {
             client
                 .get(&current_url)
                 .headers(headers)
@@ -323,6 +339,16 @@ impl RequestCommands {
                 .send()
                 .await
                 .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+        };
+
+        let elapsed = start.elapsed().as_millis();
+
+        match resp {
+            Ok(response) => Ok((response, elapsed)),
+            Err(e) => {
+                pb.finish_with_message("Request failed");
+                Err(e)
+            }
         }
     }
 
@@ -335,14 +361,28 @@ impl RequestCommands {
         let response = Self::execute_request(self, verbose, stdin_input, stream).await;
 
         match response {
-            Ok(resp) => {
+            Ok((resp, elapsed)) => {
                 if verbose && !stream {
                     println!("{:?}", resp.version());
-                    self.print_request_method(resp.url().as_ref(), resp.status());
+                    self.print_request_method(resp.url().as_ref(), resp.status(), elapsed);
                 }
                 Self::print_request_response(resp, verbose, stream).await
             }
-            Err(err) => Err(err),
+            Err(err) => {
+                // Provide more detailed error information
+                if let Some(reqwest_err) = err.downcast_ref::<reqwest::Error>() {
+                    if reqwest_err.is_timeout() {
+                        eprintln!("Request timed out");
+                    } else if reqwest_err.is_connect() {
+                        eprintln!("Connection error");
+                    } else if reqwest_err.is_redirect() {
+                        eprintln!("Redirect error");
+                    }
+                } else {
+                    eprintln!("Error: {}", err);
+                }
+                Err(err)
+            }
         }
     }
 }

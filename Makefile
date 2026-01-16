@@ -1,10 +1,10 @@
 build:
 	cargo build
 
-build-release:
+linux-release:
 	cargo build --release
 
-build-windows:
+windows-release:
 	cargo build --release --target x86_64-pc-windows-gnu
 
 run:
