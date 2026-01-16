@@ -19,7 +19,7 @@ pub static HOME_DIR: Lazy<String> = Lazy::new(|| {
 pub static COMAN_JSON: Lazy<String> =
     Lazy::new(|| env::var("COMAN_JSON").unwrap_or_else(|_| COMAN_FILE.to_string()));
 
-fn get_file_path() -> String {
+pub fn get_file_path() -> String {
     if COMAN_FILE != *COMAN_JSON {
         COMAN_JSON.to_string()
     } else {

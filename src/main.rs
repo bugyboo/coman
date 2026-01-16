@@ -1,7 +1,7 @@
 use std::io::Read;
 use std::{fmt, io};
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 
 mod commands;
 mod helper;
@@ -223,14 +223,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         io::stdin().read_to_end(&mut stdin_input)?;
     }
 
-    let args = Cli::parse();
+    let file_path = helper::get_file_path();
 
-    let result = args.command.run(stdin_input).await;
+    let version: &'static str = Box::leak(
+        format!(
+            "version: {}\n (data file: {})",
+            env!("CARGO_PKG_VERSION"),
+            file_path
+        )
+        .into_boxed_str(),
+    );
+
+    let args = Cli::command().version(version).get_matches();
+
+    let cli = Cli::from_arg_matches(&args)?;
+
+    let result = cli.command.run(stdin_input).await;
 
     match result {
         Ok(_s) => {}
         Err(e) => {
-            eprintln!("Failed to run command : {} \n {}", args.command, e);
+            eprintln!("Failed to run command : {} \n {}", cli.command, e);
             std::process::exit(1);
         }
     }
