@@ -1,5 +1,5 @@
 [package]
-name = "coman"
+name = "coman-cli"
 version = "1.1.5"
 edition = "2021"
 description = "Coman is a simple API manager designed to streamline API management and request sending."
@@ -9,6 +9,10 @@ repository = "https://github.com/bugyboo/coman"
 keywords = ["api", "cli", "http", "postman", "yaml"]
 categories = ["command-line-utilities", "web-programming", "tools"]
 readme = "README.md"
+
+[[bin]]
+name = "coman"
+path = "src/main.rs"
 
 [dependencies]
 atty = "0.2.14"
