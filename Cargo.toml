@@ -2,6 +2,7 @@
 name = "coman"
 version = "1.1.5"
 edition = "2021"
+description = "Coman is a simple API manager designed to streamline API management and request sending."
 license = "MIT OR Apache-2.0"
 authors = ["Yasser Harbi"]
 repository = "https://github.com/bugyboo/coman"
