@@ -2,6 +2,12 @@
 name = "coman"
 version = "1.1.5"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Yasser Harbi"]
+repository = "https://github.com/bugyboo/coman"
+keywords = ["api", "cli", "http", "client", "postman", "yaml"]
+categories = ["command-line-utilities", "web-programming", "tools"]
+readme = "README.md"
 
 [dependencies]
 atty = "0.2.14"
