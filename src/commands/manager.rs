@@ -449,7 +449,7 @@ impl ManagerCommands {
                             let requests = c.requests.unwrap_or_default();
                             if endpoint.is_empty() {
                                 if !url.is_empty() {
-                                    c.url = url.to_string();
+                                    c.url = url.clone();
                                 }
                                 if !headers.is_empty() {
                                     c.headers = Self::merge_headers(c.headers, headers);
@@ -457,18 +457,20 @@ impl ManagerCommands {
                                 c.requests = Some(requests);
                                 c
                             } else {
-                                let requests: Vec<models::collection::Request> = requests
+                                let requests = requests
                                     .into_iter()
                                     .map(|mut r| {
                                         if r.name == *endpoint {
                                             if !url.is_empty() {
-                                                r.endpoint = url.to_string();
+                                                r.endpoint = url.clone();
                                             }
                                             if !headers.is_empty() {
                                                 r.headers = Self::merge_headers(r.headers, headers);
                                             }
                                             if !body.is_empty() {
                                                 r.body = Some(body.clone());
+                                            } else {
+                                                r.body = None;
                                             }
                                         }
                                         r

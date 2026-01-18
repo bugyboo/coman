@@ -22,13 +22,14 @@ pub async fn run_tests(collection_name: &str) -> Result<String, Box<dyn std::err
             let stdin_input = Vec::new();
             // Run the request
             match command.execute_request(false, stdin_input, false).await {
-                Ok(response) => {
+                Ok((response, elapsed)) => {
                     // Print the test result in the same format as print_request_method
                     println!(
-                        "[{}] {} - {}\n",
+                        "[{}] {} - {} ({} ms)\n",
                         command.to_string().bold().bright_yellow(),
                         response.url().to_string().bold().bright_white(),
-                        RequestCommands::colorize_status(response.status())
+                        RequestCommands::colorize_status(response.status()),
+                        elapsed
                     );
                 }
                 Err(e) => {
@@ -114,8 +115,12 @@ pub mod tests {
         };
         assert!(command.run().is_ok(), "Failed to create endpoint");
 
+        let cmd = Commands::Url {
+            collection: "test".to_owned(),
+            endpoint: "ver".to_owned(),
+        };
         // Step 3: Verify URL generation
-        let url = Commands::run_url("test", "ver");
+        let url = cmd.run_url("test", "ver");
         assert!(url.is_ok(), "Failed to generate URL");
         assert!(
             url.unwrap()
@@ -141,7 +146,7 @@ pub mod tests {
         assert!(command.run().is_ok(), "Failed to delete endpoint");
 
         // Verify endpoint is gone
-        let url = Commands::run_url("test", "ver");
+        let url = cmd.run_url("test", "ver");
         assert!(url.is_err(), "Endpoint should be deleted");
 
         // Step 6: Delete collection
@@ -183,8 +188,13 @@ pub mod tests {
         };
         assert!(command.run().is_ok());
 
+        let cmd = Commands::Url {
+            collection: "test2".to_owned(),
+            endpoint: "ver".to_owned(),
+        };
+
         // Verify URL includes merged headers
-        let url = Commands::run_url("test2", "ver");
+        let url = cmd.run_url("test2", "ver");
         assert!(url.is_ok());
         let url_str = url.unwrap();
         assert!(url_str.contains("post 'http://localhost:8080/ver'"));
@@ -202,7 +212,7 @@ pub mod tests {
         assert!(command.run().is_ok());
 
         // Verify URL is updated
-        let url = Commands::run_url("test2", "ver");
+        let url = cmd.run_url("test2", "ver");
         assert!(url.is_ok());
         assert!(url.unwrap().contains("post 'http://localhost:8080/ver2'"));
 
@@ -216,7 +226,7 @@ pub mod tests {
         assert!(command.run().is_ok());
 
         // Verify copied endpoint
-        let url = Commands::run_url("test2", "ver3");
+        let url = cmd.run_url("test2", "ver3");
         assert!(url.is_ok());
 
         // Copy collection
@@ -390,7 +400,14 @@ pub mod tests {
         }
         .run();
 
-        let result = Commands::run_request("test", "ver", &true, &Vec::new(), &false).await;
+        let cmd = Commands::Url {
+            collection: "test".to_owned(),
+            endpoint: "ver".to_owned(),
+        };
+
+        let result = cmd
+            .run_request("test", "ver", &true, &Vec::new(), &false)
+            .await;
         assert!(result.is_ok());
 
         // Cleanup

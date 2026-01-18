@@ -130,7 +130,11 @@ impl fmt::Display for Commands {
 }
 
 impl Commands {
-    pub fn run_url(collection: &str, endpoint: &str) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn run_url(
+        &self,
+        collection: &str,
+        endpoint: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         let command = ManagerCommands::get_endpoint_command(collection, endpoint)
             .ok_or_else(|| format!("Endpoint not found: {}/{}", collection, endpoint))?;
 
@@ -162,6 +166,7 @@ impl Commands {
     }
 
     pub async fn run_request(
+        &self,
         collection: &str,
         endpoint: &str,
         verbose: &bool,
@@ -189,8 +194,8 @@ impl Commands {
                 quiet,
                 verbose,
             } => ManagerCommands::List {
-                col: col.clone(),
-                endpoint: endpoint.clone(),
+                col: col.to_owned(),
+                endpoint: endpoint.to_owned(),
                 verbose: *verbose,
                 quiet: *quiet,
             }
@@ -206,11 +211,14 @@ impl Commands {
                 endpoint,
                 verbose,
                 stream,
-            } => Self::run_request(collection, endpoint, verbose, &stdin_input, stream).await,
+            } => {
+                self.run_request(collection, endpoint, verbose, &stdin_input, stream)
+                    .await
+            }
             Commands::Url {
                 collection,
                 endpoint,
-            } => Self::run_url(collection, endpoint),
+            } => self.run_url(collection, endpoint),
             Commands::Test { collection } => test::run_tests(collection).await,
         }
     }
