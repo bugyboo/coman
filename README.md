@@ -30,6 +30,11 @@ Coman is a simple API manager designed to streamline API management and request 
 - [Global Options](#global-options)
 - [Command Details](#command-details)
 - [Examples](#examples)
+  - [Managing Collections](#managing-collections)
+  - [Sending Requests](#sending-requests)
+  - [Running Endpoints](#running-endpoints)
+  - [Prompting for Missing Data](#prompting-for-missing-data)
+  - [Pipe operation](#pipe-operation)
 - [Additional Resources](#additional-resources)
 
 ## Installation
@@ -218,6 +223,62 @@ coman url <COLLECTION> <ENDPOINT>
   coman run myapi users
   ```
 
+### Prompting for Missing Data
+
+Coman supports interactive prompts for missing data using the `:?` placeholder. When a header value or request body contains `:?`, Coman will prompt you to enter the value at runtime. This is useful for sensitive data like tokens or dynamic values that change between requests.
+
+#### Missing Header Data
+
+If a header value contains `:?`, Coman will prompt for the correct value:
+
+- Create an endpoint with a placeholder in the header:
+  ```bash
+  coman man endpoint myapi secure "/protected" -H "Authorization: Bearer :?"
+  ```
+
+- When you run the endpoint, Coman will prompt:
+  ```bash
+  coman run myapi secure
+  # Output: Header value for key 'Authorization' is missing data. Please provide the correct value: 
+  # Enter your token and press Enter
+  ```
+
+#### Missing Body Data
+
+If the request body contains `:?`, Coman will prompt for each placeholder:
+
+- Create an endpoint with placeholders in the body:
+  ```bash
+  coman man endpoint myapi create-user "/users" -m POST -b '{"username": ":?", "email": ":?"}'
+  ```
+
+- When you run the endpoint, Coman will prompt for each `:?`:
+  ```bash
+  coman run myapi create-user
+  # Output: Missing data at position 14 - {"username": ":?", "email": ":?"}. Please provide the correct value: 
+  # Enter "john_doe" and press Enter
+  # Output: Missing data at position 31 - {"username": "john_doe", "email": ":?"}. Please provide the correct value:
+  # Enter "john@example.com" and press Enter
+  ```
+
+#### Direct Requests with Placeholders
+
+You can also use placeholders in direct requests:
+
+- URL with placeholder:
+  ```bash
+  coman req get "http://api.example.com/users/:?"
+  # Prompts for the user ID
+  ```
+
+- Headers and body with placeholders:
+  ```bash
+  coman req post "http://api.example.com/login" -H "X-API-Key: :?" -b '{"password": ":?"}'
+  # Prompts for API key, then password
+  ```
+
+> **Note**: Prompting is disabled when using the `-s` (stream) option to allow for non-interactive piped operations.
+
 ### Pipe operation
 
 Coman supports reading request body from standard input when piping data. This is useful for sending JSON payloads or other data directly from files or other commands.
@@ -237,9 +298,19 @@ Coman supports reading request body from standard input when piping data. This i
 
 When data is piped to coman, it will override any body defined in the endpoint configuration.
 
-### Limitations
+### Updating and Deleting Headers/Body
 
-- Coman can't delete headers or body after created. Instead, you can delete the endpoint.
+To remove a header or clear the body from a collection or endpoint, use the `update` command with an empty value:
+
+- Remove a header from an endpoint:
+  ```bash
+  coman man update myapi users -H "Authorization:"
+  ```
+
+- Clear the body from an endpoint:
+  ```bash
+  coman man update myapi users -b ""
+  ```
 
 For more help, use the `help` command with any of the subcommands:
 

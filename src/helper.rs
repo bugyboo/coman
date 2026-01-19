@@ -115,11 +115,17 @@ pub fn confirm(prompt: &str) -> bool {
 
 #[cfg(test)]
 pub mod tests {
+
     use serial_test::serial;
 
     #[test]
     #[serial]
     fn test_serial_01_read_write_json_from_file() {
+
+        let home= super::home_dir();
+
+        assert!(!home.is_empty());
+
         std::env::set_var("COMAN_JSON", "test.json");
 
         let path = "test.json".to_string();
@@ -138,5 +144,6 @@ pub mod tests {
         let result = super::write_json_to_file(&result.unwrap());
 
         assert!(result.is_ok());
+
     }
 }
