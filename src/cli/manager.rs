@@ -352,7 +352,11 @@ impl ManagerCommands {
             } => {
                 if endpoint.is_empty() {
                     // Update collection
-                    let url_opt = if url.is_empty() { None } else { Some(url.as_str()) };
+                    let url_opt = if url.is_empty() {
+                        None
+                    } else {
+                        Some(url.as_str())
+                    };
                     let headers_opt = if headers.is_empty() {
                         None
                     } else {
@@ -361,7 +365,11 @@ impl ManagerCommands {
                     manager.update_collection(collection, url_opt, headers_opt)?;
                 } else {
                     // Update endpoint
-                    let url_opt = if url.is_empty() { None } else { Some(url.as_str()) };
+                    let url_opt = if url.is_empty() {
+                        None
+                    } else {
+                        Some(url.as_str())
+                    };
                     let headers_opt = if headers.is_empty() {
                         None
                     } else {
@@ -372,7 +380,13 @@ impl ManagerCommands {
                     } else {
                         Some(body.clone())
                     };
-                    manager.update_endpoint(collection, endpoint, url_opt, headers_opt, body_opt)?;
+                    manager.update_endpoint(
+                        collection,
+                        endpoint,
+                        url_opt,
+                        headers_opt,
+                        body_opt,
+                    )?;
                 }
                 println!("Collection updated successfully!");
             }
@@ -398,10 +412,11 @@ impl ManagerCommands {
                 headers,
                 body,
             } => {
-                let method: Method = method.to_uppercase().parse().map_err(|_| {
-                    format!("Invalid HTTP method: {}", method)
-                })?;
-                
+                let method: Method = method
+                    .to_uppercase()
+                    .parse()
+                    .map_err(|_| format!("Invalid HTTP method: {}", method))?;
+
                 let body_opt = if body.trim().is_empty() {
                     None
                 } else {

@@ -28,7 +28,7 @@ pub fn coman_json() -> &'static str {
 
 pub fn get_file_path() -> &'static str {
     static CACHE: OnceLock<&'static str> = OnceLock::new();
-    
+
     CACHE.get_or_init(|| {
         let json_path = coman_json();
         // If env var was set (different from default), use it directly as full path
@@ -71,7 +71,7 @@ pub fn write_json_to_file<T: serde::Serialize>(data: &T) -> Result<(), Box<dyn s
 
     // Atomically rename temp file to target (this is the atomic operation)
     // persist() consumes the temp file and prevents auto-deletion
-    temp_file.persist(&file_path)?;
+    temp_file.persist(file_path)?;
 
     Ok(())
 }
@@ -87,7 +87,7 @@ pub fn read_json_from_file<T: serde::de::DeserializeOwned>() -> Result<T, Box<dy
     let file_path = get_file_path();
 
     // Open and read the actual data file
-    let mut file = match File::open(&file_path) {
+    let mut file = match File::open(file_path) {
         Ok(f) => f,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             return Err(Box::new(std::io::Error::new(
@@ -121,8 +121,7 @@ pub mod tests {
     #[test]
     #[serial]
     fn test_serial_01_read_write_json_from_file() {
-
-        let home= super::home_dir();
+        let home = super::home_dir();
 
         assert!(!home.is_empty());
 
@@ -144,6 +143,5 @@ pub mod tests {
         let result = super::write_json_to_file(&result.unwrap());
 
         assert!(result.is_ok());
-
     }
 }

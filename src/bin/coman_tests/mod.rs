@@ -2,10 +2,10 @@
 //!
 //! This module provides the test command functionality for the CLI.
 
+use colored::Colorize;
 use coman::cli::manager::ManagerCommands;
 use coman::cli::request::RequestCommands;
 use coman::CollectionManager;
-use colored::Colorize;
 
 pub async fn run_tests(collection_name: &str) -> Result<String, Box<dyn std::error::Error>> {
     let manager = CollectionManager::default();
