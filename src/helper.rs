@@ -5,26 +5,40 @@ use std::{
     path::Path,
 };
 
-use once_cell::sync::Lazy;
+use std::sync::OnceLock;
 use tempfile::NamedTempFile;
 
 pub static COMAN_FILE: &str = "coman.json";
 
-pub static HOME_DIR: Lazy<String> = Lazy::new(|| {
-    env::var("HOME")
-        .or_else(|_| env::var("USERPROFILE"))
-        .unwrap_or_else(|_| "/".to_string())
-});
+pub fn home_dir() -> &'static str {
+    static CACHE: OnceLock<String> = OnceLock::new();
 
-pub static COMAN_JSON: Lazy<String> =
-    Lazy::new(|| env::var("COMAN_JSON").unwrap_or_else(|_| COMAN_FILE.to_string()));
+    CACHE.get_or_init(|| {
+        env::var("HOME")
+            .or_else(|_| env::var("USERPROFILE"))
+            .unwrap_or("/".to_string())
+    })
+}
 
-pub fn get_file_path() -> String {
-    if COMAN_FILE != *COMAN_JSON {
-        COMAN_JSON.to_string()
-    } else {
-        format!("{}/{}", *HOME_DIR, *COMAN_JSON)
-    }
+pub fn coman_json() -> &'static str {
+    static CACHE: OnceLock<String> = OnceLock::new();
+
+    CACHE.get_or_init(|| env::var("COMAN_JSON").unwrap_or_else(|_| COMAN_FILE.to_string()))
+}
+
+pub fn get_file_path() -> &'static str {
+    static CACHE: OnceLock<&'static str> = OnceLock::new();
+
+    CACHE.get_or_init(|| {
+        let json_path = coman_json();
+        // If env var was set (different from default), use it directly as full path
+        if json_path != COMAN_FILE {
+            json_path
+        } else {
+            // Leak the formatted string to get &'static str
+            Box::leak(format!("{}/{}", home_dir(), json_path).into_boxed_str())
+        }
+    })
 }
 
 /// Atomically writes JSON data to file with file locking.
@@ -57,7 +71,7 @@ pub fn write_json_to_file<T: serde::Serialize>(data: &T) -> Result<(), Box<dyn s
 
     // Atomically rename temp file to target (this is the atomic operation)
     // persist() consumes the temp file and prevents auto-deletion
-    temp_file.persist(&file_path)?;
+    temp_file.persist(file_path)?;
 
     Ok(())
 }
@@ -73,7 +87,7 @@ pub fn read_json_from_file<T: serde::de::DeserializeOwned>() -> Result<T, Box<dy
     let file_path = get_file_path();
 
     // Open and read the actual data file
-    let mut file = match File::open(&file_path) {
+    let mut file = match File::open(file_path) {
         Ok(f) => f,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             return Err(Box::new(std::io::Error::new(
@@ -101,11 +115,16 @@ pub fn confirm(prompt: &str) -> bool {
 
 #[cfg(test)]
 pub mod tests {
+
     use serial_test::serial;
 
     #[test]
     #[serial]
     fn test_serial_01_read_write_json_from_file() {
+        let home = super::home_dir();
+
+        assert!(!home.is_empty());
+
         std::env::set_var("COMAN_JSON", "test.json");
 
         let path = "test.json".to_string();
