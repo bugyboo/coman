@@ -1,10 +1,10 @@
-//! Test runner for API collections (library side)
+//! Test runner for API collections
 //!
-//! This module provides test utilities that can be used by the CLI.
+//! This module provides the test command functionality for the CLI.
 
-use crate::cli::manager::ManagerCommands;
-use crate::cli::request::RequestCommands;
-use crate::core::collection_manager::CollectionManager;
+use coman::cli::manager::ManagerCommands;
+use coman::cli::request::RequestCommands;
+use coman::CollectionManager;
 use colored::Colorize;
 
 pub async fn run_tests(collection_name: &str) -> Result<String, Box<dyn std::error::Error>> {
@@ -50,4 +50,3 @@ pub async fn run_tests(collection_name: &str) -> Result<String, Box<dyn std::err
 
     Ok("Tests completed".to_string())
 }
-

@@ -1,8 +1,8 @@
 [package]
 name = "coman-cli"
-version = "1.1.6"
+version = "1.2.0"
 edition = "2021"
-description = "Coman is a simple API manager designed to streamline API management and request sending."
+description = "Coman is a simple API manager designed to streamline API management and request sending. Can be used as a library or CLI."
 license = "MIT OR Apache-2.0"
 authors = ["Yasser Harbi"]
 repository = "https://github.com/bugyboo/coman"
@@ -10,22 +10,34 @@ keywords = ["api", "cli", "http", "postman", "yaml"]
 categories = ["command-line-utilities", "web-programming"]
 readme = "README.md"
 
+[lib]
+name = "coman"
+path = "src/lib.rs"
+
 [[bin]]
 name = "coman"
-path = "src/main.rs"
+path = "src/bin/coman.rs"
+required-features = ["cli"]
+
+[features]
+default = ["cli"]
+cli = ["dep:clap", "dep:colored", "dep:indicatif", "dep:atty"]
 
 [dependencies]
-atty = "0.2.14"
-clap = { version = "4.5.54", features = ["derive"] }
-colored = "3.1.1"
+# Core dependencies (always included)
 futures = "0.3.31"
-reqwest = { version = "0.13.1", default-features = false, features = ["http2", "json", "stream", "multipart", "native-tls-vendored"] } # use native-tls-vendored for compatibility with Windows
+reqwest = { version = "0.13.1", default-features = false, features = ["http2", "json", "stream", "multipart", "native-tls-vendored"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "macros"] }
 infer = "0.19"
 tempfile = "3.24.0"
-indicatif = "0.18.3"
+
+# CLI-only dependencies (optional)
+clap = { version = "4.5.54", features = ["derive"], optional = true }
+colored = { version = "3.1.1", optional = true }
+indicatif = { version = "0.18.3", optional = true }
+atty = { version = "0.2.14", optional = true }
 
 [dev-dependencies]
 serial_test = "3"             # Run tests sequentially when needed

@@ -1,3 +1,8 @@
+//! CLI commands for making HTTP requests
+//!
+//! This module provides the command-line interface for making HTTP requests,
+//! including progress bars, colored output, and interactive prompts.
+
 use clap::{Args, Subcommand};
 use colored::{ColoredString, Colorize};
 use futures::stream::StreamExt;

@@ -3,13 +3,12 @@ use std::{fmt, io};
 
 use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 
-mod commands;
-mod helper;
-mod models;
-mod test;
+// Import from the library crate
+use coman::cli::manager::ManagerCommands;
+use coman::cli::request::RequestCommands;
+use coman::helper;
 
-use commands::manager::ManagerCommands;
-use commands::request::RequestCommands;
+mod coman_tests;
 
 #[derive(Parser)]
 #[command(name = "coman", about = "Simple API Manager", version)]
@@ -219,7 +218,7 @@ impl Commands {
                 collection,
                 endpoint,
             } => self.run_url(collection, endpoint),
-            Commands::Test { collection } => test::run_tests(collection).await,
+            Commands::Test { collection } => coman_tests::run_tests(collection).await,
         }
     }
 }

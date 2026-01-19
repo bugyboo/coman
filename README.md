@@ -13,7 +13,9 @@
 
 # Coman
 
-Coman is a simple API manager designed to streamline API management and request sending. Its key features include:
+Coman is a simple API manager designed to streamline API management and request sending. It can be used as a **CLI tool** or as a **Rust library** in your own projects.
+
+## Key Features
 
 - **Collections Management**: Store APIs grouped in collections where each collection can have a base URL.
 - **Endpoint Management**: Each endpoint is relative to its parent collection's URL. Endpoints can have multiple headers and a body.
@@ -21,11 +23,13 @@ Coman is a simple API manager designed to streamline API management and request 
 - **Command Memory**: Coman has a few subcommands and options that are easy to remember.
 - **Persist Collections**: Coman saves a JSON file in the home directory.
 - **Pretty JSON output**: By default, API results are treated as JSON unless the streaming option is defined.
+- **Library Support**: Use coman as a library in your Rust projects for programmatic API management.
 
 ## Table of Contents
 
 - [Installation](#installation)
-- [Usage](#usage)
+- [Usage as CLI](#usage-as-cli)
+- [Usage as Library](#usage-as-library)
 - [Main Commands](#main-commands)
 - [Global Options](#global-options)
 - [Command Details](#command-details)
@@ -42,6 +46,13 @@ Coman is a simple API manager designed to streamline API management and request 
 ### Prerequisites
 
 - Rust (latest stable version recommended)
+
+### Installing as CLI
+
+Install from crates.io:
+```bash
+cargo install coman
+```
 
 ### Building from Source
 
@@ -63,11 +74,93 @@ Alternatively, you can run it directly with:
 cargo run --release -- <args>
 ```
 
-## Usage
+### Using as a Library
+
+Add coman to your `Cargo.toml`:
+
+```toml
+[dependencies]
+coman = { version = "1.2", default-features = false }  # Library only, no CLI deps
+```
+
+Or with default features (includes CLI dependencies):
+```toml
+[dependencies]
+coman = "1.2"
+```
+
+## Usage as CLI
 
 ```bash
 coman [OPTIONS] <COMMAND>
 ```
+
+## Usage as Library
+
+Coman can be used as a library for programmatic API collection management and HTTP requests:
+
+```rust
+use coman::{CollectionManager, HttpClient, Method};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create a collection manager with a custom file path
+    let manager = CollectionManager::new(Some("my-apis.json".to_string()));
+
+    // Add a new collection
+    manager.add_collection("my-api", "https://api.example.com", vec![])?;
+
+    // Add an endpoint to the collection
+    manager.add_endpoint(
+        "my-api",
+        "get-users",
+        "/users",
+        Method::Get,
+        vec![("Authorization".to_string(), "Bearer token".to_string())],
+        None,
+    )?;
+
+    // Make an HTTP request using the HttpClient
+    let client = HttpClient::new();
+    let response = client
+        .get("https://api.example.com/users")
+        .headers(vec![("Authorization".to_string(), "Bearer token".to_string())])
+        .send()
+        .await?;
+
+    println!("Status: {}", response.status);
+    println!("Body: {}", response.body);
+
+    // Or execute a saved endpoint directly
+    let response = client.execute_endpoint(&manager, "my-api", "get-users").await?;
+    println!("Response: {}", response.body);
+
+    Ok(())
+}
+```
+
+### Library API Overview
+
+**Core Types:**
+- `CollectionManager` - Manage collections and endpoints
+- `HttpClient` - Make HTTP requests
+- `HttpRequest` - Build custom requests
+- `HttpResponse` - Response with status, headers, body
+- `Collection`, `Request`, `Method` - Data models
+
+**CollectionManager Methods:**
+- `new(file_path)` - Create manager with optional custom file
+- `add_collection(name, url, headers)` - Add/update collection
+- `add_endpoint(collection, name, path, method, headers, body)` - Add/update endpoint
+- `delete_collection(name)` - Delete a collection
+- `delete_endpoint(collection, endpoint)` - Delete an endpoint
+- `get_collection(name)` - Get collection details
+- `get_endpoint(collection, endpoint)` - Get endpoint details
+- `list_collections()` - List all collections
+
+**HttpClient Methods:**
+- `get(url)`, `post(url)`, `put(url)`, `delete(url)`, `patch(url)` - Create requests
+- `execute_endpoint(manager, collection, endpoint)` - Execute saved endpoint
 
 ## Main Commands
 
