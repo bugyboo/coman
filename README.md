@@ -51,7 +51,7 @@ Coman is a simple API manager designed to streamline API management and request 
 
 Install from crates.io:
 ```bash
-cargo install coman
+cargo install coman-cli
 ```
 
 ### Building from Source
