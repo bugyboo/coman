@@ -425,6 +425,7 @@ impl CollectionManager {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use serial_test::serial;
 
@@ -448,5 +449,26 @@ mod tests {
         // This test assumes there's a collection in test.json
         let result = manager.load_collections();
         assert!(result.is_ok());
+
+        let collections = result.unwrap();
+
+        if let Some(col) = collections.first() {
+            let result = manager.get_collection(&col.name);
+            assert!(result.is_ok());
+            let fetched_col = result.unwrap();
+            assert_eq!(fetched_col.name, col.name);
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_save_collections() {
+        let manager = setup_test_manager();
+        // This test assumes there's a collection in test.json
+        let result = manager.load_collections();
+        assert!(result.is_ok());
+
+        let result = manager.save_collections(result.unwrap().as_slice());
+        assert!(result.is_ok());        
     }
 }
