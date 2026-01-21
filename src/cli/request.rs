@@ -259,21 +259,15 @@ impl RequestCommands {
             Part::bytes(body.clone().into_bytes())
         };
 
-        if verbose {
+        if verbose && !stream {
             Self::print_request_headers(&headers);
             Self::print_request_body(body.as_str());
         }
-
-        // let client = ClientBuilder::new()
-        //     .redirect(Policy::none())
-        //     .build()
-        //     .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
 
         let client = HttpClient::new()
             .with_follow_redirects(false)
             .with_timeout(Duration::from_secs(120));            
 
-        // let headers = Self::build_header_map(&headers);
 
         let method = match self {
             Self::Get { .. } => HttpMethod::Get,
@@ -338,21 +332,8 @@ impl RequestCommands {
                 }
                 Self::print_request_response(resp, verbose, stream).await
             }
-            Err(err) => {
-                // Provide more detailed error information
-                if let Some(reqwest_err) = err.downcast_ref::<reqwest::Error>() {
-                    if reqwest_err.is_timeout() {
-                        eprintln!("Request timed out");
-                    } else if reqwest_err.is_connect() {
-                        eprintln!("Connection error");
-                    } else if reqwest_err.is_redirect() {
-                        eprintln!("Redirect error");
-                    }
-                } else {
-                    eprintln!("Error: {}", err);
-                }
+            Err(err) => 
                 Err(err)
-            }
         }
     }
 }
