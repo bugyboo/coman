@@ -7,14 +7,13 @@ use clap::{Args, Subcommand};
 use colored::{ColoredString, Colorize};
 use indicatif::{ProgressBar, ProgressStyle};
 use infer;
-use reqwest::header::HeaderMap;
 use reqwest::multipart::Part;
 use serde_json::Value;
 use std::fmt;
 use std::io::{self, Write};
 use std::time::Duration;
 use crate::HttpResponse;
-use crate::core::http_client::{HttpClient, HttpError, HttpMethod};
+use crate::core::http_client::{HttpClient, HttpMethod};
 
 #[derive(Args, Clone, Debug)]
 pub struct RequestData {
@@ -115,13 +114,13 @@ impl RequestCommands {
     }
 
     async fn print_request_response(
-        response: HttpResponse,
+        response: &HttpResponse,
         verbose: bool,
         stream: bool,
     ) -> Result<String, Box<dyn std::error::Error>> {
         if verbose && !stream {
             println!("{}", "Response Headers:".to_string().bold().bright_blue());
-            for (key, value) in response.headers {
+            for (key, value) in response.headers.iter() {
                 println!("  {}: {:?}", key.to_string().bright_white(), value);
             }
             println!("\n{}", "Response Body:".to_string().bold().bright_blue());
@@ -133,13 +132,12 @@ impl RequestCommands {
             std::io::stdout().flush()?;
 
         } else {
-            let body = response.body;
             //Try parsing the body as JSON
-            if let Ok(json) = serde_json::from_str::<Value>(&body) {
+            if let Ok(json) = response.json::<Value>() {
                 let pretty = serde_json::to_string_pretty(&json)?;
                 println!("{}", pretty.green());
             } else {
-                println!("{}", body.italic());
+                println!("{}", response.body.italic());
             }
         }
 
@@ -188,16 +186,6 @@ impl RequestCommands {
             body.replace_range(idx..idx + 2, replacement);
         }
         body
-    }
-
-    pub fn build_header_map(headers: &[(String, String)]) -> HeaderMap {
-        let mut header_map = HeaderMap::new();
-        for (key, value) in headers {
-            if let Ok(header_name) = key.parse::<reqwest::header::HeaderName>() {
-                header_map.insert(header_name, value.parse().unwrap());
-            }
-        }
-        header_map
     }
 
     /// Checks if the Vec<u8> is valid UTF-8 (likely text) or not (binary).
@@ -296,10 +284,39 @@ impl RequestCommands {
                 .headers(headers.into_iter().collect())
                 .send()
                 .await
+        } else if !stdin_input.is_empty() {
+            if stream {
+                client
+                    .request(method, &current_url)
+                    .headers(headers.into_iter().collect())
+                    .body_bytes(stdin_input)
+                    .send_streaming(|chunk| {
+                        std::io::stdout().write_all(&chunk)?;
+                        std::io::stdout().flush().unwrap();
+                        Ok(())
+                    })
+                    .await
+            } else if is_text {
+                client
+                    .request(method, &current_url)
+                    .headers(headers.into_iter().collect())
+                    .body(String::from_utf8_lossy(&stdin_input).as_ref())
+                    .send()
+                    .await
+            } else {
+                client
+                    .request(method, &current_url)
+                    .headers(headers.into_iter().collect())
+                    .send_multipart(part)
+                    .await
+            }           
         } else {
-            return Err(Box::new(HttpError::Other(
-                "Only GET method is implemented in this example".to_owned(),
-            )));
+            client
+                .request(method, &current_url)
+                .headers(headers.into_iter().collect())
+                .body(&body)
+                .send()
+                .await
         };
 
         let elapsed = start.elapsed().as_millis();
@@ -330,7 +347,7 @@ impl RequestCommands {
                     println!("{:?}", resp.version );
                     self.print_request_method(&resp.url, resp.status, elapsed);
                 }
-                Self::print_request_response(resp, verbose, stream).await
+                Self::print_request_response(&resp, verbose, stream).await
             }
             Err(err) => 
                 Err(err)
