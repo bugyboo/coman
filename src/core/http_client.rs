@@ -96,6 +96,8 @@ impl From<reqwest::Error> for HttpError {
 /// HTTP Response
 #[derive(Debug, Clone)]
 pub struct HttpResponse {
+    /// HTTP Version
+    pub version: String,
     /// Response status code
     pub status: u16,
     /// Response status text
@@ -249,6 +251,7 @@ impl HttpRequest {
         let status = response.status().as_u16();
         let status_text = response.status().to_string();
         let url = response.url().to_string();
+        let version = format!("{:?}", response.version());
 
         let mut headers = HashMap::new();
         for (key, value) in response.headers().iter() {
@@ -261,6 +264,7 @@ impl HttpRequest {
         let body = String::from_utf8_lossy(&body_bytes).to_string();
 
         Ok(HttpResponse {
+            version,
             status,
             status_text,
             headers,
@@ -321,6 +325,7 @@ impl HttpRequest {
         let status = response.status().as_u16();
         let status_text = response.status().to_string();
         let url = response.url().to_string();
+        let version = format!("{:?}", response.version());
 
         let mut headers = HashMap::new();
         for (key, value) in response.headers().iter() {
@@ -342,6 +347,7 @@ impl HttpRequest {
         let body = String::from_utf8_lossy(&all_bytes).to_string();
 
         Ok(HttpResponse {
+            version,
             status,
             status_text,
             headers,
@@ -517,6 +523,7 @@ pub async fn execute_multipart_request(
     let status = response.status().as_u16();
     let status_text = response.status().to_string();
     let url = response.url().to_string();
+    let version = format!("{:?}", response.version());
 
     let mut headers = HashMap::new();
     for (key, value) in response.headers().iter() {
@@ -529,6 +536,7 @@ pub async fn execute_multipart_request(
     let body = String::from_utf8_lossy(&body_bytes).to_string();
 
     Ok(HttpResponse {
+        version,
         status,
         status_text,
         headers,
@@ -555,7 +563,8 @@ mod tests {
     #[test]
     fn test_http_response_status_checks() {
         let response = HttpResponse {
-            status: 200,
+            version: "HTTP/1.1".to_string(),
+            status: 200,            
             status_text: "OK".to_string(),
             headers: HashMap::new(),
             body: String::new(),

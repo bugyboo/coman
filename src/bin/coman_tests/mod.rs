@@ -33,8 +33,8 @@ pub async fn run_tests(collection_name: &str) -> Result<String, Box<dyn std::err
                     println!(
                         "[{}] {} - {} ({} ms)\n",
                         command.to_string().bold().bright_yellow(),
-                        response.url().to_string().bold().bright_white(),
-                        RequestCommands::colorize_status(response.status()),
+                        response.url.bold().bright_white(),
+                        RequestCommands::colorize_status(response.status ),
                         elapsed
                     );
                 }
