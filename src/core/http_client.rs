@@ -107,7 +107,7 @@ pub struct HttpResponse {
     /// Response body as string
     pub body: String,
     /// Response body as bytes (for binary data)
-    pub body_bytes: Vec<u8>,
+    // pub body_bytes: Vec<u8>,
     /// Request duration in milliseconds
     pub elapsed_ms: u128,
     /// Final URL (after redirects)
@@ -269,7 +269,6 @@ impl HttpRequest {
             status_text,
             headers,
             body,
-            body_bytes,
             elapsed_ms: elapsed,
             url,
         })
@@ -335,24 +334,20 @@ impl HttpRequest {
         }
 
         let mut stream = response.bytes_stream();
-        let mut all_bytes = Vec::new();
 
         while let Some(chunk) = stream.next().await {
             let chunk = chunk.map_err(|e| HttpError::ResponseError(e.to_string()))?;
-            all_bytes.extend_from_slice(&chunk);
             on_chunk(&chunk).map_err(|e| HttpError::Other(e.to_string()))?;
         }
 
         let elapsed = start.elapsed().as_millis();
-        let body = String::from_utf8_lossy(&all_bytes).to_string();
 
         Ok(HttpResponse {
             version,
             status,
             status_text,
             headers,
-            body,
-            body_bytes: all_bytes,
+            body: String::new(),
             elapsed_ms: elapsed,
             url,
         })
@@ -420,12 +415,10 @@ impl HttpRequest {
             status_text,
             headers,
             body,
-            body_bytes,
             elapsed_ms: elapsed,
             url,
         })
     }
-
 }
 
 /// HTTP Client with convenience methods
@@ -565,11 +558,10 @@ mod tests {
     fn test_http_response_status_checks() {
         let response = HttpResponse {
             version: "HTTP/1.1".to_string(),
-            status: 200,            
+            status: 200,
             status_text: "OK".to_string(),
             headers: HashMap::new(),
             body: String::new(),
-            body_bytes: Vec::new(),
             elapsed_ms: 0,
             url: String::new(),
         };

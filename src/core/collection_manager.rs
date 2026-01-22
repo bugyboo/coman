@@ -469,6 +469,6 @@ mod tests {
         assert!(result.is_ok());
 
         let result = manager.save_collections(result.unwrap().as_slice());
-        assert!(result.is_ok());        
+        assert!(result.is_ok());
     }
 }

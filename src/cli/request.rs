@@ -3,6 +3,8 @@
 //! This module provides the command-line interface for making HTTP requests,
 //! including progress bars, colored output, and interactive prompts.
 
+use crate::core::http_client::{HttpClient, HttpMethod};
+use crate::HttpResponse;
 use clap::{Args, Subcommand};
 use colored::{ColoredString, Colorize};
 use indicatif::{ProgressBar, ProgressStyle};
@@ -12,8 +14,6 @@ use serde_json::Value;
 use std::fmt;
 use std::io::{self, Write};
 use std::time::Duration;
-use crate::HttpResponse;
-use crate::core::http_client::{HttpClient, HttpMethod};
 
 #[derive(Args, Clone, Debug)]
 pub struct RequestData {
@@ -117,7 +117,7 @@ impl RequestCommands {
         response: &HttpResponse,
         verbose: bool,
         stream: bool,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if verbose && !stream {
             println!("{}", "Response Headers:".to_string().bold().bright_blue());
             for (key, value) in response.headers.iter() {
@@ -126,12 +126,7 @@ impl RequestCommands {
             println!("\n{}", "Response Body:".to_string().bold().bright_blue());
         }
 
-        if stream {
-
-            std::io::stdout().write_all(&response.body_bytes)?;
-            std::io::stdout().flush()?;
-
-        } else {
+        if !stream {
             //Try parsing the body as JSON
             if let Ok(json) = response.json::<Value>() {
                 let pretty = serde_json::to_string_pretty(&json)?;
@@ -141,7 +136,7 @@ impl RequestCommands {
             }
         }
 
-        Ok("".to_string())
+        Ok(())
     }
 
     pub fn colorize_status(status: u16) -> ColoredString {
@@ -233,11 +228,11 @@ impl RequestCommands {
                     "Unknown file type",
                 ))
             })?;
-            let mime_type = kind.mime_type(); // e.g., "image/jpeg"
+            let mime_type = kind.mime_type();
             let extension = kind.extension();
             let filename = format!("file.{}", extension);
             Part::bytes(stdin_input.clone())
-                .file_name(filename) // Mandatory for Spring FilePart
+                .file_name(filename)
                 .mime_str(mime_type)?
         } else if !stream && !stdin_input.is_empty() && is_text {
             // Text data from stdin
@@ -254,8 +249,7 @@ impl RequestCommands {
 
         let client = HttpClient::new()
             .with_follow_redirects(false)
-            .with_timeout(Duration::from_secs(120));            
-
+            .with_timeout(Duration::from_secs(120));
 
         let method = match self {
             Self::Get { .. } => HttpMethod::Get,
@@ -278,44 +272,34 @@ impl RequestCommands {
 
         let start = std::time::Instant::now();
 
-        let resp = if method == HttpMethod::Get {
+        let resp = if stream {
+            let body_bytes = if !stdin_input.is_empty() {
+                stdin_input
+            } else {
+                body.clone().into_bytes()
+            };
             client
-                .get(&current_url)
+                .request(method, &current_url)
                 .headers(headers.into_iter().collect())
+                .body_bytes(body_bytes)
+                .send_streaming(|chunk| {
+                    std::io::stdout().write_all(&chunk)?;
+                    std::io::stdout().flush().unwrap();
+                    Ok(())
+                })
+                .await
+        } else if is_text {
+            client
+                .request(method, &current_url)
+                .headers(headers.into_iter().collect())
+                .body(String::from_utf8_lossy(&stdin_input).as_ref())
                 .send()
                 .await
-        } else if !stdin_input.is_empty() {
-            if stream {
-                client
-                    .request(method, &current_url)
-                    .headers(headers.into_iter().collect())
-                    .body_bytes(stdin_input)
-                    .send_streaming(|chunk| {
-                        std::io::stdout().write_all(&chunk)?;
-                        std::io::stdout().flush().unwrap();
-                        Ok(())
-                    })
-                    .await
-            } else if is_text {
-                client
-                    .request(method, &current_url)
-                    .headers(headers.into_iter().collect())
-                    .body(String::from_utf8_lossy(&stdin_input).as_ref())
-                    .send()
-                    .await
-            } else {
-                client
-                    .request(method, &current_url)
-                    .headers(headers.into_iter().collect())
-                    .send_multipart(part)
-                    .await
-            }           
         } else {
             client
                 .request(method, &current_url)
                 .headers(headers.into_iter().collect())
-                .body(&body)
-                .send()
+                .send_multipart(part)
                 .await
         };
 
@@ -338,19 +322,18 @@ impl RequestCommands {
         verbose: bool,
         stdin_input: Vec<u8>,
         stream: bool,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let response = Self::execute_request(self, verbose, stdin_input, stream).await;
 
         match response {
             Ok((resp, elapsed)) => {
                 if verbose && !stream {
-                    println!("{:?}", resp.version );
+                    println!("{:?}", resp.version);
                     self.print_request_method(&resp.url, resp.status, elapsed);
                 }
                 Self::print_request_response(&resp, verbose, stream).await
             }
-            Err(err) => 
-                Err(err)
+            Err(err) => Err(err),
         }
     }
 }
