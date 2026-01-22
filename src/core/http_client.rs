@@ -96,6 +96,8 @@ impl From<reqwest::Error> for HttpError {
 /// HTTP Response
 #[derive(Debug, Clone)]
 pub struct HttpResponse {
+    /// HTTP Version
+    pub version: String,
     /// Response status code
     pub status: u16,
     /// Response status text
@@ -105,7 +107,7 @@ pub struct HttpResponse {
     /// Response body as string
     pub body: String,
     /// Response body as bytes (for binary data)
-    pub body_bytes: Vec<u8>,
+    // pub body_bytes: Vec<u8>,
     /// Request duration in milliseconds
     pub elapsed_ms: u128,
     /// Final URL (after redirects)
@@ -249,6 +251,7 @@ impl HttpRequest {
         let status = response.status().as_u16();
         let status_text = response.status().to_string();
         let url = response.url().to_string();
+        let version = format!("{:?}", response.version());
 
         let mut headers = HashMap::new();
         for (key, value) in response.headers().iter() {
@@ -261,11 +264,11 @@ impl HttpRequest {
         let body = String::from_utf8_lossy(&body_bytes).to_string();
 
         Ok(HttpResponse {
+            version,
             status,
             status_text,
             headers,
             body,
-            body_bytes,
             elapsed_ms: elapsed,
             url,
         })
@@ -321,6 +324,7 @@ impl HttpRequest {
         let status = response.status().as_u16();
         let status_text = response.status().to_string();
         let url = response.url().to_string();
+        let version = format!("{:?}", response.version());
 
         let mut headers = HashMap::new();
         for (key, value) in response.headers().iter() {
@@ -330,23 +334,87 @@ impl HttpRequest {
         }
 
         let mut stream = response.bytes_stream();
-        let mut all_bytes = Vec::new();
 
         while let Some(chunk) = stream.next().await {
             let chunk = chunk.map_err(|e| HttpError::ResponseError(e.to_string()))?;
-            all_bytes.extend_from_slice(&chunk);
             on_chunk(&chunk).map_err(|e| HttpError::Other(e.to_string()))?;
         }
 
         let elapsed = start.elapsed().as_millis();
-        let body = String::from_utf8_lossy(&all_bytes).to_string();
 
         Ok(HttpResponse {
+            version,
+            status,
+            status_text,
+            headers,
+            body: String::new(),
+            elapsed_ms: elapsed,
+            url,
+        })
+    }
+
+    pub async fn send_multipart(self, part: Part) -> HttpResult<HttpResponse> {
+        let client_builder = ClientBuilder::new();
+
+        let client_builder = if self.follow_redirects {
+            client_builder.redirect(Policy::default())
+        } else {
+            client_builder.redirect(Policy::none())
+        };
+
+        let client_builder = if let Some(timeout) = self.timeout {
+            client_builder.timeout(timeout)
+        } else {
+            client_builder
+        };
+
+        let client = client_builder
+            .build()
+            .map_err(|e| HttpError::RequestError(e.to_string()))?;
+
+        let header_map = build_header_map(&self.headers);
+
+        let method = match self.method {
+            HttpMethod::Get => reqwest::Method::GET,
+            HttpMethod::Post => reqwest::Method::POST,
+            HttpMethod::Put => reqwest::Method::PUT,
+            HttpMethod::Delete => reqwest::Method::DELETE,
+            HttpMethod::Patch => reqwest::Method::PATCH,
+        };
+
+        let form = multipart::Form::new().part("file", part);
+
+        let start = std::time::Instant::now();
+
+        let response = client
+            .request(method, &self.url)
+            .headers(header_map)
+            .multipart(form)
+            .send()
+            .await?;
+
+        let elapsed = start.elapsed().as_millis();
+        let status = response.status().as_u16();
+        let status_text = response.status().to_string();
+        let url = response.url().to_string();
+        let version = format!("{:?}", response.version());
+
+        let mut headers = HashMap::new();
+        for (key, value) in response.headers().iter() {
+            if let Ok(v) = value.to_str() {
+                headers.insert(key.to_string(), v.to_string());
+            }
+        }
+
+        let body_bytes = response.bytes().await?.to_vec();
+        let body = String::from_utf8_lossy(&body_bytes).to_string();
+
+        Ok(HttpResponse {
+            version,
             status,
             status_text,
             headers,
             body,
-            body_bytes: all_bytes,
             elapsed_ms: elapsed,
             url,
         })
@@ -473,72 +541,6 @@ pub fn build_header_map(headers: &[(String, String)]) -> HeaderMap {
     header_map
 }
 
-/// Execute a multipart form request
-pub async fn execute_multipart_request(
-    url: &str,
-    method: HttpMethod,
-    headers: &[(String, String)],
-    file_bytes: Vec<u8>,
-    file_name: &str,
-    mime_type: &str,
-) -> HttpResult<HttpResponse> {
-    let client = ClientBuilder::new()
-        .redirect(Policy::none())
-        .build()
-        .map_err(|e| HttpError::RequestError(e.to_string()))?;
-
-    let header_map = build_header_map(headers);
-
-    let method = match method {
-        HttpMethod::Get => reqwest::Method::GET,
-        HttpMethod::Post => reqwest::Method::POST,
-        HttpMethod::Put => reqwest::Method::PUT,
-        HttpMethod::Delete => reqwest::Method::DELETE,
-        HttpMethod::Patch => reqwest::Method::PATCH,
-    };
-
-    let part = Part::bytes(file_bytes)
-        .file_name(file_name.to_string())
-        .mime_str(mime_type)
-        .map_err(|e| HttpError::RequestError(e.to_string()))?;
-
-    let form = multipart::Form::new().part("file", part);
-
-    let start = std::time::Instant::now();
-
-    let response = client
-        .request(method, url)
-        .headers(header_map)
-        .multipart(form)
-        .send()
-        .await?;
-
-    let elapsed = start.elapsed().as_millis();
-    let status = response.status().as_u16();
-    let status_text = response.status().to_string();
-    let url = response.url().to_string();
-
-    let mut headers = HashMap::new();
-    for (key, value) in response.headers().iter() {
-        if let Ok(v) = value.to_str() {
-            headers.insert(key.to_string(), v.to_string());
-        }
-    }
-
-    let body_bytes = response.bytes().await?.to_vec();
-    let body = String::from_utf8_lossy(&body_bytes).to_string();
-
-    Ok(HttpResponse {
-        status,
-        status_text,
-        headers,
-        body,
-        body_bytes,
-        elapsed_ms: elapsed,
-        url,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -555,11 +557,11 @@ mod tests {
     #[test]
     fn test_http_response_status_checks() {
         let response = HttpResponse {
+            version: "HTTP/1.1".to_string(),
             status: 200,
             status_text: "OK".to_string(),
             headers: HashMap::new(),
             body: String::new(),
-            body_bytes: Vec::new(),
             elapsed_ms: 0,
             url: String::new(),
         };

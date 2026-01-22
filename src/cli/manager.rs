@@ -213,7 +213,7 @@ impl ManagerCommands {
         })
     }
 
-    pub fn run(&self) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
         let manager = Self::get_manager();
 
         match self {
@@ -428,6 +428,6 @@ impl ManagerCommands {
             }
         }
 
-        Ok("".to_string())
+        Ok(())
     }
 }

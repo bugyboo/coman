@@ -7,7 +7,7 @@ use coman::cli::manager::ManagerCommands;
 use coman::cli::request::RequestCommands;
 use coman::CollectionManager;
 
-pub async fn run_tests(collection_name: &str) -> Result<String, Box<dyn std::error::Error>> {
+pub async fn run_tests(collection_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     let manager = CollectionManager::default();
     let collections = manager.load_collections().unwrap_or_default();
     let collection = collections
@@ -33,8 +33,8 @@ pub async fn run_tests(collection_name: &str) -> Result<String, Box<dyn std::err
                     println!(
                         "[{}] {} - {} ({} ms)\n",
                         command.to_string().bold().bright_yellow(),
-                        response.url().to_string().bold().bright_white(),
-                        RequestCommands::colorize_status(response.status()),
+                        response.url.bold().bright_white(),
+                        RequestCommands::colorize_status(response.status),
                         elapsed
                     );
                 }
@@ -48,5 +48,6 @@ pub async fn run_tests(collection_name: &str) -> Result<String, Box<dyn std::err
         println!("No requests found in collection '{}'", collection_name);
     }
 
-    Ok("Tests completed".to_string())
+    println!("All tests completed for collection '{}'", collection_name);
+    Ok(())
 }

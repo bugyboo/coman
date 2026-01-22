@@ -133,7 +133,7 @@ impl Commands {
         &self,
         collection: &str,
         endpoint: &str,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let command = ManagerCommands::get_endpoint_command(collection, endpoint)
             .ok_or_else(|| format!("Endpoint not found: {}/{}", collection, endpoint))?;
 
@@ -161,7 +161,7 @@ impl Commands {
         );
         println!("coman req -v {}", url);
 
-        Ok(url)
+        Ok(())
     }
 
     pub async fn run_request(
@@ -171,7 +171,7 @@ impl Commands {
         verbose: &bool,
         stdin_input: &Vec<u8>,
         stream: &bool,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if *verbose {
             println!(
                 "Running collection '{}' with endpoint '{}'",
@@ -179,13 +179,16 @@ impl Commands {
             );
         }
 
-        let command = ManagerCommands::get_endpoint_command(collection, endpoint)
-            .ok_or_else(|| format!("Endpoint not found: {}/{}", collection, endpoint))?;
+        let command = ManagerCommands::get_endpoint_command(collection, endpoint);
 
-        command.run(*verbose, stdin_input.to_owned(), *stream).await
+        if let Some(cmd) = command {
+            cmd.run(*verbose, stdin_input.to_owned(), *stream).await
+        } else {
+            Err(format!("Endpoint not found: {} - {}", collection, endpoint).into())
+        }
     }
 
-    async fn run(&self, stdin_input: Vec<u8>) -> Result<String, Box<dyn std::error::Error>> {
+    async fn run(&self, stdin_input: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
         match self {
             Commands::List {
                 col,

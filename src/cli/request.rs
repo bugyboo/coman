@@ -3,14 +3,13 @@
 //! This module provides the command-line interface for making HTTP requests,
 //! including progress bars, colored output, and interactive prompts.
 
+use crate::core::http_client::{HttpClient, HttpMethod};
+use crate::HttpResponse;
 use clap::{Args, Subcommand};
 use colored::{ColoredString, Colorize};
-use futures::stream::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use infer;
-use reqwest::header::HeaderMap;
-use reqwest::multipart::{self, Part};
-use reqwest::{redirect::Policy, ClientBuilder, StatusCode};
+use reqwest::multipart::Part;
 use serde_json::Value;
 use std::fmt;
 use std::io::{self, Write};
@@ -92,12 +91,12 @@ impl RequestCommands {
         }
     }
 
-    pub fn print_request_method(&self, url: &str, status: StatusCode, elapsed: u128) {
+    pub fn print_request_method(&self, url: &str, status: u16, elapsed: u128) {
         println!(
             "\n[{}] {} - {} ({} ms)\n",
             self.to_string().bold().bright_yellow(),
             url.to_string().bold().bright_white(),
-            Self::colorize_status(status),
+            Self::colorize_status(status.to_string().parse().unwrap()),
             elapsed
         );
     }
@@ -115,44 +114,33 @@ impl RequestCommands {
     }
 
     async fn print_request_response(
-        response: reqwest::Response,
+        response: &HttpResponse,
         verbose: bool,
         stream: bool,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if verbose && !stream {
             println!("{}", "Response Headers:".to_string().bold().bright_blue());
-            for (key, value) in response.headers().iter() {
+            for (key, value) in response.headers.iter() {
                 println!("  {}: {:?}", key.to_string().bright_white(), value);
             }
             println!("\n{}", "Response Body:".to_string().bold().bright_blue());
         }
 
-        if stream {
-            // Get the stream of bytes
-            let mut stream = response.bytes_stream();
-
-            // Process each chunk as it arrives
-            while let Some(chunk) = stream.next().await {
-                let chunk = chunk?;
-                std::io::stdout().write_all(&chunk)?;
-                std::io::stdout().flush()?;
-            }
-        } else {
-            let body = response.text().await?;
+        if !stream {
             //Try parsing the body as JSON
-            if let Ok(json) = serde_json::from_str::<Value>(&body) {
+            if let Ok(json) = response.json::<Value>() {
                 let pretty = serde_json::to_string_pretty(&json)?;
                 println!("{}", pretty.green());
             } else {
-                println!("{}", body.italic());
+                println!("{}", response.body.italic());
             }
         }
 
-        Ok("".to_string())
+        Ok(())
     }
 
-    pub fn colorize_status(status: StatusCode) -> ColoredString {
-        match status.as_u16() {
+    pub fn colorize_status(status: u16) -> ColoredString {
+        match status {
             200..=299 => status.to_string().bold().bright_green(),
             300..=499 => status.to_string().bold().bright_yellow(),
             500..=599 => status.to_string().bold().bright_red(),
@@ -195,16 +183,6 @@ impl RequestCommands {
         body
     }
 
-    pub fn build_header_map(headers: &[(String, String)]) -> HeaderMap {
-        let mut header_map = HeaderMap::new();
-        for (key, value) in headers {
-            if let Ok(header_name) = key.parse::<reqwest::header::HeaderName>() {
-                header_map.insert(header_name, value.parse().unwrap());
-            }
-        }
-        header_map
-    }
-
     /// Checks if the Vec<u8> is valid UTF-8 (likely text) or not (binary).
     fn is_text_data(data: &[u8]) -> bool {
         std::str::from_utf8(data).is_ok()
@@ -215,7 +193,7 @@ impl RequestCommands {
         verbose: bool,
         stdin_input: Vec<u8>,
         stream: bool,
-    ) -> Result<(reqwest::Response, u128), Box<dyn std::error::Error>> {
+    ) -> Result<(HttpResponse, u128), Box<dyn std::error::Error>> {
         let data = self.get_data();
 
         let current_url = if !stream {
@@ -250,38 +228,35 @@ impl RequestCommands {
                     "Unknown file type",
                 ))
             })?;
-            let mime_type = kind.mime_type(); // e.g., "image/jpeg"
+            let mime_type = kind.mime_type();
             let extension = kind.extension();
             let filename = format!("file.{}", extension);
             Part::bytes(stdin_input.clone())
-                .file_name(filename) // Mandatory for Spring FilePart
+                .file_name(filename)
                 .mime_str(mime_type)?
         } else if !stream && !stdin_input.is_empty() && is_text {
             // Text data from stdin
             Part::text(String::from_utf8_lossy(&stdin_input).to_string())
         } else {
             // Use body string
-            Part::text(body.clone())
+            Part::bytes(body.clone().into_bytes())
         };
 
-        if verbose {
+        if verbose && !stream {
             Self::print_request_headers(&headers);
             Self::print_request_body(body.as_str());
         }
 
-        let client = ClientBuilder::new()
-            .redirect(Policy::none())
-            .build()
-            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
-
-        let headers = Self::build_header_map(&headers);
+        let client = HttpClient::new()
+            .with_follow_redirects(false)
+            .with_timeout(Duration::from_secs(120));
 
         let method = match self {
-            Self::Get { .. } => reqwest::Method::GET,
-            Self::Post { .. } => reqwest::Method::POST,
-            Self::Put { .. } => reqwest::Method::PUT,
-            Self::Delete { .. } => reqwest::Method::DELETE,
-            Self::Patch { .. } => reqwest::Method::PATCH,
+            Self::Get { .. } => HttpMethod::Get,
+            Self::Post { .. } => HttpMethod::Post,
+            Self::Put { .. } => HttpMethod::Put,
+            Self::Delete { .. } => HttpMethod::Delete,
+            Self::Patch { .. } => HttpMethod::Patch,
         };
 
         let pb = ProgressBar::new_spinner();
@@ -297,62 +272,47 @@ impl RequestCommands {
 
         let start = std::time::Instant::now();
 
-        let resp = if method == reqwest::Method::GET {
+        let resp = if stream {
+            let body_bytes = if !stdin_input.is_empty() {
+                stdin_input
+            } else {
+                body.clone().into_bytes()
+            };
             client
-                .get(&current_url)
-                .headers(headers)
+                .request(method, &current_url)
+                .headers(headers.into_iter().collect())
+                .body_bytes(body_bytes)
+                .send_streaming(|chunk| {
+                    std::io::stdout().write_all(chunk)?;
+                    std::io::stdout().flush().unwrap();
+                    Ok(())
+                })
+                .await
+        } else if is_text {
+            client
+                .request(method, &current_url)
+                .headers(headers.into_iter().collect())
+                .body(String::from_utf8_lossy(&stdin_input).as_ref())
                 .send()
                 .await
-                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-        } else if !stdin_input.is_empty() {
-            if stream {
-                // For streaming binary data
-                client
-                    .request(method, &current_url)
-                    .headers(headers)
-                    .body(stdin_input) // Send as bytes
-                    .send()
-                    .await
-                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-            } else {
-                // For non-streaming binary or text data
-                if is_text {
-                    // Text data
-                    client
-                        .request(method, &current_url)
-                        .headers(headers)
-                        .body(String::from_utf8_lossy(&stdin_input).to_string())
-                        .send()
-                        .await
-                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-                } else {
-                    let form = multipart::Form::new().part("file", part);
-                    client
-                        .request(method, &current_url)
-                        .headers(headers)
-                        .multipart(form)
-                        .send()
-                        .await
-                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-                }
-            }
         } else {
             client
                 .request(method, &current_url)
-                .headers(headers)
-                .body(body)
-                .send()
+                .headers(headers.into_iter().collect())
+                .send_multipart(part)
                 .await
-                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
         };
 
         let elapsed = start.elapsed().as_millis();
 
         match resp {
-            Ok(response) => Ok((response, elapsed)),
-            Err(e) => {
+            Ok(response) => {
+                pb.finish_with_message("Request completed");
+                Ok((response, elapsed))
+            }
+            Err(err) => {
                 pb.finish_with_message("Request failed");
-                Err(e)
+                Err(Box::new(err))
             }
         }
     }
@@ -362,32 +322,18 @@ impl RequestCommands {
         verbose: bool,
         stdin_input: Vec<u8>,
         stream: bool,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let response = Self::execute_request(self, verbose, stdin_input, stream).await;
 
         match response {
             Ok((resp, elapsed)) => {
                 if verbose && !stream {
-                    println!("{:?}", resp.version());
-                    self.print_request_method(resp.url().as_ref(), resp.status(), elapsed);
+                    println!("{:?}", resp.version);
+                    self.print_request_method(&resp.url, resp.status, elapsed);
                 }
-                Self::print_request_response(resp, verbose, stream).await
+                Self::print_request_response(&resp, verbose, stream).await
             }
-            Err(err) => {
-                // Provide more detailed error information
-                if let Some(reqwest_err) = err.downcast_ref::<reqwest::Error>() {
-                    if reqwest_err.is_timeout() {
-                        eprintln!("Request timed out");
-                    } else if reqwest_err.is_connect() {
-                        eprintln!("Connection error");
-                    } else if reqwest_err.is_redirect() {
-                        eprintln!("Redirect error");
-                    }
-                } else {
-                    eprintln!("Error: {}", err);
-                }
-                Err(err)
-            }
+            Err(err) => Err(err),
         }
     }
 }
