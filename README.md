@@ -79,7 +79,7 @@ cargo run --release -- <args>
 ### Using as a Library
 
 See the Wiki for examples.
-https://github.com/bugyboo/coman
+[https://github.com/bugyboo/coman](https://github.com/bugyboo/coman/wiki/Examples-using-Coman-as-a-library)
 
 ## Usage as CLI
 
