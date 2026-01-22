@@ -4,4 +4,7 @@
 //! making HTTP requests from the command line.
 
 pub mod manager;
+pub mod manager_ops;
 pub mod request;
+pub mod request_data;
+pub mod request_ops;
