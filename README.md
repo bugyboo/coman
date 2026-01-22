@@ -23,6 +23,8 @@ Coman is a simple API manager designed to streamline API management and request 
 - **Command Memory**: Coman has a few subcommands and options that are easy to remember.
 - **Persist Collections**: Coman saves a JSON file in the home directory.
 - **Pretty JSON output**: By default, API results are treated as JSON unless the streaming option is defined.
+- **Streaming and Files**: Send streams data and files.
+- **Prompting for Missing Data**: nteractive prompts for missing data using the `:?`.
 - **Library Support**: Use coman as a library in your Rust projects for programmatic API management.
 
 ## Table of Contents
@@ -58,7 +60,7 @@ cargo install coman-cli
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/bugyboo/coman
    cd coman
    ```
 
@@ -76,67 +78,13 @@ cargo run --release -- <args>
 
 ### Using as a Library
 
-Add coman to your `Cargo.toml`:
-
-```toml
-[dependencies]
-coman = { version = "1.2", default-features = false }  # Library only, no CLI deps
-```
-
-Or with default features (includes CLI dependencies):
-```toml
-[dependencies]
-coman = "1.2"
-```
+See the Wiki for examples.
+https://github.com/bugyboo/coman
 
 ## Usage as CLI
 
 ```bash
 coman [OPTIONS] <COMMAND>
-```
-
-## Usage as Library
-
-Coman can be used as a library for programmatic API collection management and HTTP requests:
-
-```rust
-use coman::{CollectionManager, HttpClient, Method};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create a collection manager with a custom file path
-    let manager = CollectionManager::new(Some("my-apis.json".to_string()));
-
-    // Add a new collection
-    manager.add_collection("my-api", "https://api.example.com", vec![])?;
-
-    // Add an endpoint to the collection
-    manager.add_endpoint(
-        "my-api",
-        "get-users",
-        "/users",
-        Method::Get,
-        vec![("Authorization".to_string(), "Bearer token".to_string())],
-        None,
-    )?;
-
-    // Make an HTTP request using the HttpClient
-    let client = HttpClient::new();
-    let response = client
-        .get("https://api.example.com/users")
-        .headers(vec![("Authorization".to_string(), "Bearer token".to_string())])
-        .send()
-        .await?;
-
-    println!("Status: {}", response.status);
-    println!("Body: {}", response.body);
-
-    // Or execute a saved endpoint directly
-    let response = client.execute_endpoint(&manager, "my-api", "get-users").await?;
-    println!("Response: {}", response.body);
-
-    Ok(())
-}
 ```
 
 ### Library API Overview
