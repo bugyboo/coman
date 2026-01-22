@@ -283,7 +283,7 @@ impl RequestCommands {
                 .headers(headers.into_iter().collect())
                 .body_bytes(body_bytes)
                 .send_streaming(|chunk| {
-                    std::io::stdout().write_all(&chunk)?;
+                    std::io::stdout().write_all(chunk)?;
                     std::io::stdout().flush().unwrap();
                     Ok(())
                 })
