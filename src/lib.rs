@@ -47,7 +47,9 @@ pub mod models;
 
 // Re-export main types for convenience
 pub use core::collection_manager::CollectionManager;
-pub use core::http_client::{HttpClient, HttpMethod, HttpRequest, HttpResponse};
+pub use core::http_client::{HttpClient, HttpMethod, HttpResult};
+pub use core::http_request::HttpRequest;
+pub use core::http_response::HttpResponse;
 pub use models::collection::{Collection, Method, Request};
 
 // CLI module (only available with the cli feature)
