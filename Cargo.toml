@@ -1,6 +1,6 @@
 [package]
 name = "coman-cli"
-version = "1.2.2"
+version = "1.2.3"
 edition = "2021"
 description = "Coman is a simple API manager designed to streamline API management and request sending. Can be used as a library or CLI."
 license = "MIT OR Apache-2.0"
@@ -9,6 +9,7 @@ repository = "https://github.com/bugyboo/coman"
 keywords = ["api", "cli", "http", "postman", "yaml"]
 categories = ["command-line-utilities", "web-programming"]
 readme = "README.md"
+default-run = "coman"
 
 [lib]
 name = "coman"
