@@ -119,12 +119,12 @@ impl HttpClient {
     /// Execute a request from a collection endpoint
     pub async fn execute_endpoint(
         &self,
-        manager: &mut CollectionManager,
+        manager: CollectionManager,
         col_name: &str,
         ep_name: &str,
     ) -> HttpResult<HttpResponse> {
         let col = manager
-            .get_collection(col_name)
+            .get_collection_imutable(col_name)
             .map_err(|e| HttpError::Other(e.to_string()))?;
         let req = col.get_request(ep_name).ok_or_else(|| {
             HttpError::Other(format!(

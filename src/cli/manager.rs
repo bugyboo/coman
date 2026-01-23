@@ -201,9 +201,7 @@ impl ManagerCommands {
             .ok()?;
         let data = RequestData {
             url: format!("{}{}", col.url, req.endpoint),
-            headers: manager
-                .get_endpoint_headers(col_name, ep_name)
-                .unwrap_or_default(),
+            headers: manager.get_endpoint_headers(col_name, ep_name),
             body: req.body.clone().unwrap_or_default(),
         };
 

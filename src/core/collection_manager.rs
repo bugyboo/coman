@@ -15,13 +15,14 @@ pub type CollectionResult<T> = Result<T, CollectionError>;
 /// Provides methods for CRUD operations on collections and endpoints.
 #[derive(Clone)]
 pub struct CollectionManager {
+    in_memory: bool,
     file_path: Option<String>,
     pub loaded_collections: Option<Vec<Collection>>,
 }
 
 impl Default for CollectionManager {
     fn default() -> Self {
-        Self::new(None)
+        Self::new(None, false)
     }
 }
 
@@ -31,13 +32,21 @@ impl CollectionManager {
     /// # Arguments
     ///
     /// * `file_path` - Optional custom file path. If None, uses default location.
-    pub fn new(file_path: Option<String>) -> Self {
+    pub fn new(file_path: Option<String>, in_memory: bool) -> Self {
         if let Some(ref path) = file_path {
             std::env::set_var("COMAN_JSON", path);
         }
         Self {
+            in_memory,
             file_path,
-            loaded_collections: Self::load_collections_from_file().ok(),
+            loaded_collections: if in_memory {
+                Some(Vec::new())
+            } else {
+                match Self::load_collections_from_file() {
+                    Ok(cols) => Some(cols),
+                    Err(_) => None,
+                }
+            }
         }
     }
 
@@ -77,6 +86,17 @@ impl CollectionManager {
         }
     }
 
+    /// Get a specific collection imutable by name
+    pub fn get_collection_imutable(&self, name: &str) -> CollectionResult<&Collection> {
+        match &self.loaded_collections {
+            Some(cols) => cols
+                .iter()
+                .find(|c| c.name == name)
+                .ok_or_else(|| CollectionError::CollectionNotFound(name.to_string())),
+            None => Err(CollectionError::CollectionNotFound(name.to_string())),
+        }
+    }
+
     /// Get a specific endpoint from a collection
     pub fn get_endpoint(&mut self, col_name: &str, ep_name: &str) -> CollectionResult<Request> {
         let col = self.get_collection(col_name)?;
@@ -86,13 +106,17 @@ impl CollectionManager {
 
     /// Save collections to the storage file
     pub fn save_collections(self) -> CollectionResult<()> {
-        if let Some(collections) = self.loaded_collections {
-            helper::write_json_to_file(&collections)?;
-            Ok(())
+        if !self.in_memory {
+            if let Some(collections) = self.loaded_collections {
+                helper::write_json_to_file(&collections)?;
+                Ok(())
+            } else {
+                Err(CollectionError::Other(
+                    "No collections loaded to save".to_string(),
+                ))
+            }
         } else {
-            Err(CollectionError::Other(
-                "No collections loaded to save".to_string(),
-            ))
+            Ok(())
         }
     }
 }
@@ -105,7 +129,7 @@ mod tests {
 
     fn setup_test_manager() -> CollectionManager {
         std::env::set_var("COMAN_JSON", "test.json");
-        CollectionManager::new(Some("test.json".to_string()))
+        CollectionManager::new(Some("test.json".to_string()), false)
     }
 
     #[test]

@@ -48,7 +48,6 @@ impl CollectionManager {
             return Err(CollectionError::CollectionNotFound(name.to_string()));
         }
 
-        self.loaded_collections = Some(collections.to_vec());
         self.save_collections()?;
         Ok(())
     }

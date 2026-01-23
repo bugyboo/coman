@@ -24,12 +24,9 @@ impl CollectionManager {
         mut self,
         collection: &str,
         endpoint: &str,
-    ) -> CollectionResult<Vec<(String, String)>> {
-        let col = self.get_collection(collection)?;
-        // let req = self.get_endpoint(collection, endpoint)?;
-        let req = col
-            .get_request(endpoint)
-            .ok_or_else(|| CollectionError::EndpointNotFound(endpoint.to_string()))?;
+    ) -> Vec<(String, String)> {
+        let col = self.get_collection(collection).unwrap();
+        let req = col.get_request(endpoint).unwrap();
 
         let mut merged: HashMap<String, String> = HashMap::new();
         for (k, v) in &col.headers {
@@ -39,7 +36,7 @@ impl CollectionManager {
             merged.insert(k.clone(), v.clone());
         }
 
-        Ok(merged.into_iter().collect())
+        merged.into_iter().collect()
     }
 
     /// Add an endpoint to a collection
