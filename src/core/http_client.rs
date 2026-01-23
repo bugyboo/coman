@@ -6,6 +6,7 @@
 use crate::core::errors::HttpError;
 use crate::core::http_request::HttpRequest;
 use crate::core::http_response::HttpResponse;
+use crate::CollectionManager;
 use std::time::Duration;
 
 /// HTTP methods supported by the client
@@ -118,21 +119,22 @@ impl HttpClient {
     /// Execute a request from a collection endpoint
     pub async fn execute_endpoint(
         &self,
-        manager: &crate::core::collection_manager::CollectionManager,
-        collection: &str,
-        endpoint: &str,
+        manager: CollectionManager,
+        col_name: &str,
+        ep_name: &str,
     ) -> HttpResult<HttpResponse> {
         let col = manager
-            .get_collection(collection)
+            .get_collection_imutable(col_name)
             .map_err(|e| HttpError::Other(e.to_string()))?;
-        let req = manager
-            .get_endpoint(collection, endpoint)
-            .map_err(|e| HttpError::Other(e.to_string()))?;
+        let req = col.get_request(ep_name).ok_or_else(|| {
+            HttpError::Other(format!(
+                "Endpoint '{}' not found in collection '{}'",
+                ep_name, col_name
+            ))
+        })?;
 
         let url = format!("{}{}", col.url, req.endpoint);
-        let headers = manager
-            .get_endpoint_headers(collection, endpoint)
-            .map_err(|e| HttpError::Other(e.to_string()))?;
+        let headers = req.headers;
 
         let method: HttpMethod = req.method.into();
 

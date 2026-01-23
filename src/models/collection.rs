@@ -21,6 +21,17 @@ pub struct Collection {
     pub requests: Option<Vec<Request>>,
 }
 
+impl Collection {
+    /// Get a specific request by name
+    pub fn get_request(&self, name: &str) -> Option<Request> {
+        if let Some(ref requests) = self.requests {
+            requests.iter().find(|r| r.name == name).cloned()
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Request {
     pub name: String,
