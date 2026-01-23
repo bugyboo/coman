@@ -42,11 +42,8 @@ impl CollectionManager {
             loaded_collections: if in_memory {
                 Some(Vec::new())
             } else {
-                match Self::load_collections_from_file() {
-                    Ok(cols) => Some(cols),
-                    Err(_) => None,
-                }
-            }
+                Self::load_collections_from_file().ok()
+            },
         }
     }
 
