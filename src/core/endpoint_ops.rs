@@ -1,37 +1,35 @@
 use std::collections::HashMap;
 
-use crate::{
-    core::{
-        errors::{CollectionError, CollectionResult},
-        utils::merge_headers,
-    },
-    Collection, CollectionManager, Method, Request,
-};
+use crate::core::collection_manager::CollectionResult;
+use crate::core::errors::CollectionError;
+use crate::core::utils::merge_headers;
+use crate::{Collection, CollectionManager, Method, Request};
 
 impl CollectionManager {
-    /// Get a specific endpoint from a collection
-    pub fn get_endpoint(&self, collection: &str, endpoint: &str) -> CollectionResult<Request> {
-        let col = self.get_collection(collection)?;
-        col.requests
-            .and_then(|requests| requests.into_iter().find(|r| r.name == endpoint))
-            .ok_or_else(|| CollectionError::EndpointNotFound(endpoint.to_string()))
-    }
-
     /// Get the full URL for an endpoint (base URL + endpoint path)
-    pub fn get_endpoint_url(&self, collection: &str, endpoint: &str) -> CollectionResult<String> {
+    pub fn get_endpoint_url(
+        mut self,
+        collection: &str,
+        endpoint: &str,
+    ) -> CollectionResult<String> {
         let col = self.get_collection(collection)?;
-        let req = self.get_endpoint(collection, endpoint)?;
+        let req = col
+            .get_request(endpoint)
+            .ok_or_else(|| CollectionError::EndpointNotFound(endpoint.to_string()))?;
         Ok(format!("{}{}", col.url, req.endpoint))
     }
 
     /// Get merged headers for an endpoint (collection headers + endpoint headers)
     pub fn get_endpoint_headers(
-        &self,
+        mut self,
         collection: &str,
         endpoint: &str,
     ) -> CollectionResult<Vec<(String, String)>> {
         let col = self.get_collection(collection)?;
-        let req = self.get_endpoint(collection, endpoint)?;
+        // let req = self.get_endpoint(collection, endpoint)?;
+        let req = col
+            .get_request(endpoint)
+            .ok_or_else(|| CollectionError::EndpointNotFound(endpoint.to_string()))?;
 
         let mut merged: HashMap<String, String> = HashMap::new();
         for (k, v) in &col.headers {
@@ -48,7 +46,7 @@ impl CollectionManager {
     ///
     /// If an endpoint with the same name exists, it will be updated.
     pub fn add_endpoint(
-        &self,
+        mut self,
         collection: &str,
         name: &str,
         path: &str,
@@ -56,7 +54,10 @@ impl CollectionManager {
         headers: Vec<(String, String)>,
         body: Option<String>,
     ) -> CollectionResult<()> {
-        let mut collections = self.load_collections()?;
+        let mut collections = self
+            .loaded_collections
+            .take()
+            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))?;
 
         let col = collections
             .iter_mut()
@@ -76,19 +77,23 @@ impl CollectionManager {
         requests.push(request);
         col.requests = Some(requests);
 
-        self.save_collections(&collections)
+        self.save_collections()?;
+        Ok(())
     }
 
     /// Update an endpoint in a collection
     pub fn update_endpoint(
-        &self,
+        mut self,
         collection: &str,
         endpoint: &str,
         path: Option<&str>,
         headers: Option<Vec<(String, String)>>,
         body: Option<String>,
     ) -> CollectionResult<()> {
-        let mut collections = self.load_collections()?;
+        let mut collections = self
+            .loaded_collections
+            .take()
+            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))?;
 
         let col = collections
             .iter_mut()
@@ -120,18 +125,22 @@ impl CollectionManager {
             return Err(CollectionError::EndpointNotFound(endpoint.to_string()));
         }
 
-        self.save_collections(&collections)
+        self.save_collections()?;
+        Ok(())
     }
 
     /// Copy an endpoint within the same collection or to another collection
     pub fn copy_endpoint(
-        &self,
+        mut self,
         collection: &str,
         endpoint: &str,
         new_name: &str,
         to_collection: Option<&str>,
     ) -> CollectionResult<()> {
-        let mut collections = self.load_collections()?;
+        let mut collections = self
+            .loaded_collections
+            .take()
+            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))?;
 
         // Find the source endpoint
         let source_col = collections
@@ -171,12 +180,16 @@ impl CollectionManager {
             col.requests = Some(requests);
         }
 
-        self.save_collections(&collections)
+        self.save_collections()?;
+        Ok(())
     }
 
     /// Delete an endpoint from a collection
-    pub fn delete_endpoint(&self, collection: &str, endpoint: &str) -> CollectionResult<()> {
-        let mut collections = self.load_collections()?;
+    pub fn delete_endpoint(mut self, collection: &str, endpoint: &str) -> CollectionResult<()> {
+        let mut collections = self
+            .loaded_collections
+            .take()
+            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))?;
 
         let col = collections
             .iter_mut()
@@ -194,11 +207,14 @@ impl CollectionManager {
             return Err(CollectionError::EndpointNotFound(endpoint.to_string()));
         }
 
-        self.save_collections(&collections)
+        self.save_collections()?;
+        Ok(())
     }
 
     /// List all collections
-    pub fn list_collections(&self) -> CollectionResult<Vec<Collection>> {
-        self.load_collections()
+    pub fn list_collections(mut self) -> CollectionResult<Vec<Collection>> {
+        self.loaded_collections
+            .take()
+            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))
     }
 }

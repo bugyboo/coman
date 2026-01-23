@@ -48,7 +48,9 @@ pub fn get_file_path() -> &'static str {
 /// 2. Atomically renames the temp file to the target file
 ///
 /// This ensures file integrity even if the process is interrupted.
-pub fn write_json_to_file<T: serde::Serialize>(data: &T) -> Result<(), Box<dyn std::error::Error>> {
+pub fn write_json_to_file<T: serde::Serialize + ?Sized>(
+    data: &T,
+) -> Result<(), Box<dyn std::error::Error>> {
     let file_path = get_file_path();
     let path = Path::new(&file_path);
 

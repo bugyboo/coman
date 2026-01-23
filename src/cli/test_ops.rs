@@ -9,8 +9,11 @@ use crate::core::collection_manager::CollectionManager;
 
 impl Commands {
     pub async fn run_tests(&self, collection_name: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let manager = CollectionManager::default();
-        let collections = manager.load_collections().unwrap_or_default();
+        let mut manager = CollectionManager::default();
+        let collections = manager
+            .loaded_collections
+            .take()
+            .ok_or("No collections loaded")?;
         let collection = collections
             .iter()
             .find(|col| col.name == collection_name)

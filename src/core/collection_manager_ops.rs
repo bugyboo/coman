@@ -1,66 +1,69 @@
+use crate::core::collection_manager::CollectionResult;
 use crate::core::errors::CollectionError;
 use crate::core::utils::merge_headers;
-use crate::{core::errors::CollectionResult, Collection, CollectionManager};
+use crate::{Collection, CollectionManager};
 
 impl CollectionManager {
-    /// Get a specific collection by name
-    pub fn get_collection(&self, name: &str) -> CollectionResult<Collection> {
-        let collections = self.load_collections()?;
-        collections
-            .into_iter()
-            .find(|c| c.name == name)
-            .ok_or_else(|| CollectionError::CollectionNotFound(name.to_string()))
-    }
-
     /// Add a new collection
     ///
     /// If a collection with the same name exists, it will be updated.
     pub fn add_collection(
-        &self,
+        mut self,
         name: &str,
         url: &str,
         headers: Vec<(String, String)>,
     ) -> CollectionResult<()> {
-        let mut collections = self.load_collections()?;
-
-        if let Some(col) = collections.iter_mut().find(|c| c.name == name) {
-            // Update existing collection
-            col.url = url.to_string();
-            col.headers = headers;
-        } else {
-            // Add new collection
-            collections.push(Collection {
-                name: name.to_string(),
-                url: url.to_string(),
-                headers,
-                requests: None,
-            });
-        }
-
-        self.save_collections(&collections)
+        match self.get_collection(name) {
+            Ok(c) => {
+                // Update existing collection
+                c.url = url.to_string();
+                c.headers = merge_headers(c.headers.clone(), &headers);
+            }
+            Err(_) => {
+                // Create new collection
+                let new_collection = Collection {
+                    name: name.to_string(),
+                    url: url.to_string(),
+                    headers: headers.clone(),
+                    requests: None,
+                };
+                if let Some(ref mut cols) = self.loaded_collections {
+                    cols.push(new_collection);
+                }
+            }
+        };
+        self.save_collections()?;
+        Ok(())
     }
 
     /// Delete a collection
-    pub fn delete_collection(&self, name: &str) -> CollectionResult<()> {
-        let mut collections = self.load_collections()?;
+    pub fn delete_collection(mut self, name: &str) -> CollectionResult<()> {
+        let mut collections = self
+            .loaded_collections
+            .take()
+            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))?;
         let original_len = collections.len();
         collections.retain(|c| c.name != name);
-
         if collections.len() == original_len {
             return Err(CollectionError::CollectionNotFound(name.to_string()));
         }
 
-        self.save_collections(&collections)
+        self.loaded_collections = Some(collections);
+        self.save_collections()?;
+        Ok(())
     }
 
     /// Update a collection
     pub fn update_collection(
-        &self,
+        mut self,
         name: &str,
         url: Option<&str>,
         headers: Option<Vec<(String, String)>>,
     ) -> CollectionResult<()> {
-        let mut collections = self.load_collections()?;
+        let mut collections = self
+            .loaded_collections
+            .take()
+            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))?;
 
         let col = collections
             .iter_mut()
@@ -75,12 +78,16 @@ impl CollectionManager {
             col.headers = merge_headers(col.headers.clone(), &new_headers);
         }
 
-        self.save_collections(&collections)
+        self.save_collections()?;
+        Ok(())
     }
 
     /// Copy a collection to a new name
-    pub fn copy_collection(&self, name: &str, new_name: &str) -> CollectionResult<()> {
-        let mut collections = self.load_collections()?;
+    pub fn copy_collection(mut self, name: &str, new_name: &str) -> CollectionResult<()> {
+        let mut collections = self
+            .loaded_collections
+            .take()
+            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))?;
 
         let col = collections
             .iter()
@@ -91,6 +98,7 @@ impl CollectionManager {
         new_col.name = new_name.to_string();
         collections.push(new_col);
 
-        self.save_collections(&collections)
+        self.save_collections()?;
+        Ok(())
     }
 }

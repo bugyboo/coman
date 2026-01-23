@@ -1,6 +1,3 @@
-/// Result type for collection operations
-pub type CollectionResult<T> = Result<T, CollectionError>;
-
 /// Errors that can occur during collection operations
 #[derive(Debug)]
 pub enum CollectionError {

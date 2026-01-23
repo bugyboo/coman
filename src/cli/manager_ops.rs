@@ -3,7 +3,7 @@ use colored::Colorize;
 
 impl ManagerCommands {
     pub fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let manager = ManagerCommands::get_manager();
+        let mut manager = Self::get_manager();
 
         match self {
             // List collections and endpoints
@@ -13,7 +13,10 @@ impl ManagerCommands {
                 quiet,
                 verbose,
             } => {
-                let collections = manager.load_collections()?;
+                let collections = manager
+                    .loaded_collections
+                    .take()
+                    .ok_or("No collections loaded")?;
                 if collections.is_empty() {
                     return Err("No collections found.".into());
                 } else {
@@ -182,14 +185,8 @@ impl ManagerCommands {
 
             // Add a new collection or update an existing one
             Self::Col { name, url, headers } => {
-                let exists = manager.get_collection(name).is_ok();
                 manager.add_collection(name, url, headers.clone())?;
-                if exists {
-                    eprintln!("Collection with name '{}' already exists.", name);
-                    println!("Collection updated successfully!");
-                } else {
-                    println!("Collection added successfully!");
-                }
+                println!("Collection added successfully!");
             }
 
             // Add a new endpoint to a collection or update an existing one

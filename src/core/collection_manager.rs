@@ -3,9 +3,12 @@
 //! This module provides a clean API for managing collections and endpoints
 //! without any CLI dependencies.
 
-use crate::core::errors::{CollectionError, CollectionResult};
-use crate::helper;
+use crate::core::errors::CollectionError;
 use crate::models::collection::Collection;
+use crate::{helper, Request};
+
+/// Result type for collection operations
+pub type CollectionResult<T> = Result<T, CollectionError>;
 
 /// Manager for API collections
 ///
@@ -13,6 +16,7 @@ use crate::models::collection::Collection;
 #[derive(Clone)]
 pub struct CollectionManager {
     file_path: Option<String>,
+    pub loaded_collections: Option<Vec<Collection>>,
 }
 
 impl Default for CollectionManager {
@@ -31,7 +35,10 @@ impl CollectionManager {
         if let Some(ref path) = file_path {
             std::env::set_var("COMAN_JSON", path);
         }
-        Self { file_path }
+        Self {
+            file_path,
+            loaded_collections: Self::load_collections_from_file().ok(),
+        }
     }
 
     /// Get the file path being used
@@ -42,8 +49,8 @@ impl CollectionManager {
     }
 
     /// Load all collections from the storage file
-    pub fn load_collections(&self) -> CollectionResult<Vec<Collection>> {
-        match helper::read_json_from_file() {
+    fn load_collections_from_file() -> CollectionResult<Vec<Collection>> {
+        match helper::read_json_from_file::<Vec<Collection>>() {
             Ok(c) => Ok(c),
             Err(e) => {
                 if let Some(io_err) = e.downcast_ref::<std::io::Error>() {
@@ -59,10 +66,34 @@ impl CollectionManager {
         }
     }
 
+    /// Get a specific collection by name
+    pub fn get_collection(&mut self, name: &str) -> CollectionResult<&mut Collection> {
+        match &mut self.loaded_collections {
+            Some(cols) => cols
+                .iter_mut()
+                .find(|c| c.name == name)
+                .ok_or_else(|| CollectionError::CollectionNotFound(name.to_string())),
+            None => Err(CollectionError::CollectionNotFound(name.to_string())),
+        }
+    }
+
+    /// Get a specific endpoint from a collection
+    pub fn get_endpoint(&mut self, col_name: &str, ep_name: &str) -> CollectionResult<Request> {
+        let col = self.get_collection(col_name)?;
+        col.get_request(ep_name)
+            .ok_or_else(|| CollectionError::EndpointNotFound(ep_name.to_string()))
+    }
+
     /// Save collections to the storage file
-    pub fn save_collections(&self, collections: &[Collection]) -> CollectionResult<()> {
-        let vec: Vec<Collection> = collections.to_vec();
-        helper::write_json_to_file(&vec).map_err(|e| CollectionError::Other(e.to_string()))
+    pub fn save_collections(self) -> CollectionResult<()> {
+        if let Some(collections) = self.loaded_collections {
+            helper::write_json_to_file(&collections)?;
+            Ok(())
+        } else {
+            Err(CollectionError::Other(
+                "No collections loaded to save".to_string(),
+            ))
+        }
     }
 }
 
@@ -81,37 +112,26 @@ mod tests {
     #[serial]
     fn test_load_collections() {
         let manager = setup_test_manager();
-        let result = manager.load_collections();
-        assert!(result.is_ok());
+        let result = manager.loaded_collections;
+        assert!(result.is_some());
     }
 
     #[test]
     #[serial]
     fn test_get_collection() {
-        let manager = setup_test_manager();
-        // This test assumes there's a collection in test.json
-        let result = manager.load_collections();
+        let mut manager = setup_test_manager();
+
+        let result = manager.get_collection("coman");
+
         assert!(result.is_ok());
-
-        let collections = result.unwrap();
-
-        if let Some(col) = collections.first() {
-            let result = manager.get_collection(&col.name);
-            assert!(result.is_ok());
-            let fetched_col = result.unwrap();
-            assert_eq!(fetched_col.name, col.name);
-        }
     }
 
     #[test]
     #[serial]
     fn test_save_collections() {
         let manager = setup_test_manager();
-        // This test assumes there's a collection in test.json
-        let result = manager.load_collections();
-        assert!(result.is_ok());
 
-        let result = manager.save_collections(result.unwrap().as_slice());
+        let result = manager.save_collections();
         assert!(result.is_ok());
     }
 }
