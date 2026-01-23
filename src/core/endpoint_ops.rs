@@ -54,10 +54,10 @@ impl CollectionManager {
         headers: Vec<(String, String)>,
         body: Option<String>,
     ) -> CollectionResult<()> {
-        let mut collections = self
+        let collections = self
             .loaded_collections
-            .take()
-            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))?;
+            .as_mut()
+            .ok_or_else(|| CollectionError::CollectionNotFound(collection.to_string()))?;
 
         let col = collections
             .iter_mut()
@@ -90,10 +90,10 @@ impl CollectionManager {
         headers: Option<Vec<(String, String)>>,
         body: Option<String>,
     ) -> CollectionResult<()> {
-        let mut collections = self
+        let collections = self
             .loaded_collections
-            .take()
-            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))?;
+            .as_mut()
+            .ok_or_else(|| CollectionError::CollectionNotFound(collection.to_string()))?;
 
         let col = collections
             .iter_mut()
@@ -137,10 +137,10 @@ impl CollectionManager {
         new_name: &str,
         to_collection: Option<&str>,
     ) -> CollectionResult<()> {
-        let mut collections = self
+        let collections = self
             .loaded_collections
-            .take()
-            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))?;
+            .as_mut()
+            .ok_or_else(|| CollectionError::CollectionNotFound(collection.to_string()))?;
 
         // Find the source endpoint
         let source_col = collections
@@ -186,10 +186,10 @@ impl CollectionManager {
 
     /// Delete an endpoint from a collection
     pub fn delete_endpoint(mut self, collection: &str, endpoint: &str) -> CollectionResult<()> {
-        let mut collections = self
+        let collections = self
             .loaded_collections
-            .take()
-            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))?;
+            .as_mut()
+            .ok_or_else(|| CollectionError::CollectionNotFound(collection.to_string()))?;
 
         let col = collections
             .iter_mut()
@@ -215,6 +215,6 @@ impl CollectionManager {
     pub fn list_collections(mut self) -> CollectionResult<Vec<Collection>> {
         self.loaded_collections
             .take()
-            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))
+            .ok_or_else(|| CollectionError::Other("Collections not loaded!".to_string()))
     }
 }

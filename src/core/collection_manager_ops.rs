@@ -38,17 +38,17 @@ impl CollectionManager {
 
     /// Delete a collection
     pub fn delete_collection(mut self, name: &str) -> CollectionResult<()> {
-        let mut collections = self
+        let collections = self
             .loaded_collections
-            .take()
-            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))?;
+            .as_mut()
+            .ok_or_else(|| CollectionError::CollectionNotFound(name.to_string()))?;
         let original_len = collections.len();
         collections.retain(|c| c.name != name);
         if collections.len() == original_len {
             return Err(CollectionError::CollectionNotFound(name.to_string()));
         }
 
-        self.loaded_collections = Some(collections);
+        self.loaded_collections = Some(collections.to_vec());
         self.save_collections()?;
         Ok(())
     }
@@ -60,10 +60,10 @@ impl CollectionManager {
         url: Option<&str>,
         headers: Option<Vec<(String, String)>>,
     ) -> CollectionResult<()> {
-        let mut collections = self
+        let collections = self
             .loaded_collections
-            .take()
-            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))?;
+            .as_mut()
+            .ok_or_else(|| CollectionError::CollectionNotFound(name.to_string()))?;
 
         let col = collections
             .iter_mut()
@@ -84,10 +84,10 @@ impl CollectionManager {
 
     /// Copy a collection to a new name
     pub fn copy_collection(mut self, name: &str, new_name: &str) -> CollectionResult<()> {
-        let mut collections = self
+        let collections = self
             .loaded_collections
-            .take()
-            .ok_or_else(|| CollectionError::Other("No collections loaded".to_string()))?;
+            .as_mut()
+            .ok_or_else(|| CollectionError::CollectionNotFound(name.to_string()))?;
 
         let col = collections
             .iter()
