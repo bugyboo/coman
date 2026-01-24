@@ -177,7 +177,7 @@ impl ManagerCommands {
                     let headers_opt = if headers.is_empty() {
                         None
                     } else {
-                        Some(headers.clone())
+                        Some(headers)
                     };
                     let body_opt = if body.is_empty() {
                         Some(String::new()) // Empty body clears the existing body
@@ -186,7 +186,7 @@ impl ManagerCommands {
                     };
                     ep.endpoint = url_opt.unwrap_or(&ep.endpoint).to_string();
                     ep.headers = if let Some(h) = headers_opt {
-                        merge_headers(ep.headers.clone(), &h)
+                        h.clone()
                     } else {
                         ep.headers.clone()
                     };
@@ -194,7 +194,7 @@ impl ManagerCommands {
                     manager
                         .update_endpoint(
                             collection,
-                            &ep.endpoint,
+                            &ep.name,
                             url_opt,
                             Some(ep.headers),
                             ep.body.clone(),

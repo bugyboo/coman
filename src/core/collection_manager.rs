@@ -159,6 +159,12 @@ impl CollectionManager {
                     }
                     return Ok(());
                 }
+            } else {
+                collections[col_pos].requests = Some(vec![updated]);
+                if !self.in_memory {
+                    helper::write_json_to_file(&*collections)?;
+                }
+                return Ok(());
             }
         }
         Err(CollectionError::CollectionNotFound(col_name.to_string()))
