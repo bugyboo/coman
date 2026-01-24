@@ -7,7 +7,6 @@ use clap::Subcommand;
 use std::fmt;
 
 use crate::core::collection_manager::CollectionManager;
-use crate::core::errors::CollectionError;
 use crate::models::collection::Method;
 
 use super::request::RequestCommands;
@@ -191,17 +190,13 @@ impl ManagerCommands {
     }
 
     /// Get a RequestCommands for running an endpoint from a collection
-    pub fn get_endpoint_command(col_name: &str, ep_name: &str) -> Option<RequestCommands> {
-        let mut manager = Self::get_manager();
-        let col = manager.get_collection(col_name).ok()?;
-        // let req = manager.get_endpoint(collection, endpoint).ok()?;
-        let req = col
-            .get_request(ep_name)
-            .ok_or_else(|| CollectionError::EndpointNotFound(ep_name.to_string()))
-            .ok()?;
+    pub async fn get_endpoint_command(col_name: &str, ep_name: &str) -> Option<RequestCommands> {
+        let manager = Self::get_manager();
+        let col = manager.get_collection(col_name).await.ok()??;
+        let req = col.get_request(ep_name)?;
         let data = RequestData {
             url: format!("{}{}", col.url, req.endpoint),
-            headers: manager.get_endpoint_headers(col_name, ep_name),
+            headers: manager.get_endpoint_headers(col_name, ep_name).await,
             body: req.body.clone().unwrap_or_default(),
         };
 

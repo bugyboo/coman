@@ -1,9 +1,9 @@
-use crate::{cli::manager::ManagerCommands, helper, Method};
+use crate::{cli::manager::ManagerCommands, core::utils::merge_headers, helper, Method};
 use colored::Colorize;
 
 impl ManagerCommands {
-    pub fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let mut manager = Self::get_manager();
+    pub async fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let manager = Self::get_manager();
 
         match self {
             // List collections and endpoints
@@ -13,10 +13,7 @@ impl ManagerCommands {
                 quiet,
                 verbose,
             } => {
-                let collections = manager
-                    .loaded_collections
-                    .take()
-                    .ok_or("No collections loaded")?;
+                let collections = manager.get_collections().await;
                 if collections.is_empty() {
                     return Err("No collections found.".into());
                 } else {
@@ -92,7 +89,7 @@ impl ManagerCommands {
                         true
                     };
                     if confirm {
-                        manager.delete_collection(collection)?;
+                        manager.delete_collection(collection).await?;
                         println!("Collection deleted successfully!");
                     } else {
                         return Err("Deletion cancelled.".into());
@@ -106,7 +103,7 @@ impl ManagerCommands {
                         true
                     };
                     if confirm {
-                        manager.delete_endpoint(collection, endpoint)?;
+                        manager.delete_endpoint(collection, endpoint).await?;
                         println!("Endpoint deleted successfully!");
                     } else {
                         return Err("Deletion cancelled.".into());
@@ -123,13 +120,17 @@ impl ManagerCommands {
             } => {
                 if endpoint.is_empty() {
                     // Copy collection
-                    manager.copy_collection(collection, new_name)?;
+                    manager.copy_collection(collection, new_name).await?;
                 } else if *to_col {
                     // Copy endpoint to another collection
-                    manager.copy_endpoint(collection, endpoint, new_name, Some(new_name))?;
+                    manager
+                        .copy_endpoint(collection, endpoint, new_name, Some(new_name))
+                        .await?;
                 } else {
                     // Copy endpoint with new name in same collection
-                    manager.copy_endpoint(collection, endpoint, new_name, None)?;
+                    manager
+                        .copy_endpoint(collection, endpoint, new_name, None)
+                        .await?;
                 }
                 println!("Copy command successful!");
             }
@@ -142,6 +143,10 @@ impl ManagerCommands {
                 headers,
                 body,
             } => {
+                let mut col = manager
+                    .get_collection(collection)
+                    .await?
+                    .ok_or("Collection not found")?;
                 if endpoint.is_empty() {
                     // Update collection
                     let url_opt = if url.is_empty() {
@@ -154,8 +159,15 @@ impl ManagerCommands {
                     } else {
                         Some(headers.clone())
                     };
-                    manager.update_collection(collection, url_opt, headers_opt)?;
+                    col.url = url_opt.unwrap_or(&col.url).to_string();
+                    col.headers =
+                        merge_headers(col.headers.clone(), &headers_opt.unwrap_or(vec![]));
+                    manager.update_add_collection(col).await?;
                 } else {
+                    let mut ep = manager
+                        .get_endpoint(collection, endpoint)
+                        .await?
+                        .ok_or("Endpoint not found")?;
                     // Update endpoint
                     let url_opt = if url.is_empty() {
                         None
@@ -165,27 +177,36 @@ impl ManagerCommands {
                     let headers_opt = if headers.is_empty() {
                         None
                     } else {
-                        Some(headers.clone())
+                        Some(headers)
                     };
                     let body_opt = if body.is_empty() {
                         Some(String::new()) // Empty body clears the existing body
                     } else {
                         Some(body.clone())
                     };
-                    manager.update_endpoint(
-                        collection,
-                        endpoint,
-                        url_opt,
-                        headers_opt,
-                        body_opt,
-                    )?;
+                    ep.endpoint = url_opt.unwrap_or(&ep.endpoint).to_string();
+                    ep.headers = if let Some(h) = headers_opt {
+                        h.clone()
+                    } else {
+                        ep.headers.clone()
+                    };
+                    ep.body = body_opt;
+                    manager
+                        .update_endpoint(
+                            collection,
+                            &ep.name,
+                            url_opt,
+                            Some(ep.headers),
+                            ep.body.clone(),
+                        )
+                        .await?;
                 }
                 println!("Collection updated successfully!");
             }
 
             // Add a new collection or update an existing one
             Self::Col { name, url, headers } => {
-                manager.add_collection(name, url, headers.clone())?;
+                manager.add_collection(name, url, headers.clone()).await?;
                 println!("Collection added successfully!");
             }
 
@@ -209,7 +230,9 @@ impl ManagerCommands {
                     Some(body.clone())
                 };
 
-                manager.add_endpoint(collection, name, path, method, headers.clone(), body_opt)?;
+                manager
+                    .add_endpoint(collection, name, path, method, headers.clone(), body_opt)
+                    .await?;
                 println!("Endpoint added successfully!");
             }
         }

@@ -116,13 +116,14 @@ impl fmt::Display for Commands {
 }
 
 impl Commands {
-    pub fn run_url(
+    pub async fn run_url(
         &self,
         collection: &str,
         endpoint: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let command = ManagerCommands::get_endpoint_command(collection, endpoint)
-            .ok_or_else(|| format!("Endpoint not found: {}/{}", collection, endpoint))?;
+            .await
+            .ok_or("Endpoint not found")?;
 
         let data = command.get_data();
 
@@ -166,13 +167,11 @@ impl Commands {
             );
         }
 
-        let command = ManagerCommands::get_endpoint_command(collection, endpoint);
+        let command = ManagerCommands::get_endpoint_command(collection, endpoint)
+            .await
+            .ok_or("Endpoint not found")?;
 
-        if let Some(cmd) = command {
-            cmd.run(*verbose, stdin_input.to_owned(), *stream).await
-        } else {
-            Err(format!("Endpoint not found: {} - {}", collection, endpoint).into())
-        }
+        command.run(*verbose, stdin_input.to_owned(), *stream).await
     }
 
     pub async fn run(&self, stdin_input: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
@@ -182,14 +181,17 @@ impl Commands {
                 endpoint,
                 quiet,
                 verbose,
-            } => ManagerCommands::List {
-                col: col.to_owned(),
-                endpoint: endpoint.to_owned(),
-                verbose: *verbose,
-                quiet: *quiet,
+            } => {
+                ManagerCommands::List {
+                    col: col.to_owned(),
+                    endpoint: endpoint.to_owned(),
+                    verbose: *verbose,
+                    quiet: *quiet,
+                }
+                .run()
+                .await
             }
-            .run(),
-            Commands::Man { command } => command.run(),
+            Commands::Man { command } => command.run().await,
             Commands::Req {
                 command,
                 verbose,
@@ -207,7 +209,7 @@ impl Commands {
             Commands::Url {
                 collection,
                 endpoint,
-            } => self.run_url(collection, endpoint),
+            } => self.run_url(collection, endpoint).await,
             Commands::Test { collection } => self.run_tests(collection).await,
         }
     }

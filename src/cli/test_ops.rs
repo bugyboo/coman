@@ -9,19 +9,17 @@ use crate::core::collection_manager::CollectionManager;
 
 impl Commands {
     pub async fn run_tests(&self, collection_name: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let mut manager = CollectionManager::default();
-        let collections = manager
-            .loaded_collections
-            .take()
-            .ok_or("No collections loaded")?;
-        let collection = collections
-            .iter()
-            .find(|col| col.name == collection_name)
+        let manager = CollectionManager::default();
+        let collection = manager
+            .get_collection(collection_name)
+            .await
+            .unwrap()
             .ok_or_else(|| format!("Collection '{}' not found", collection_name))?;
 
         if let Some(requests) = &collection.requests {
             for request in requests {
                 let command = ManagerCommands::get_endpoint_command(collection_name, &request.name)
+                    .await
                     .ok_or_else(|| {
                         format!(
                             "Endpoint '{}' not found in collection '{}'",

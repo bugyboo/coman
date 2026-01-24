@@ -30,13 +30,20 @@
             "name": "Debug executable 'coman'",
             "type": "lldb",
             "request": "launch",
+            "env": {
+                "COMAN_JSON": "test.json"
+            },
             "cargo": {
                 "args": [
-                    "run",
-                    "--bin=coman"
+                    "run"
                 ]
             },
-            "args": []
+            "args": [
+                "man",
+                "update",
+                "test1",
+                "-e", "t1", "-H", "accept:",
+            ]
         },
         {
             "name": "Debug unit tests in executable 'coman'",
