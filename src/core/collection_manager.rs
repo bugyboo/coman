@@ -3,6 +3,10 @@
 //! This module provides a clean API for managing collections and endpoints
 //! without any CLI dependencies.
 
+use std::sync::Arc;
+
+use tokio::sync::Mutex;
+
 use crate::core::errors::CollectionError;
 use crate::models::collection::Collection;
 use crate::{helper, Request};
@@ -17,7 +21,7 @@ pub type CollectionResult<T> = Result<T, CollectionError>;
 pub struct CollectionManager {
     in_memory: bool,
     file_path: Option<String>,
-    pub loaded_collections: Option<Vec<Collection>>,
+    loaded_collections: Arc<Mutex<Vec<Collection>>>,
 }
 
 impl Default for CollectionManager {
@@ -40,9 +44,10 @@ impl CollectionManager {
             in_memory,
             file_path,
             loaded_collections: if in_memory {
-                Some(Vec::new())
+                Arc::new(Mutex::new(Vec::new()))
             } else {
-                Self::load_collections_from_file().ok()
+                Self::load_collections_from_file()
+                    .unwrap_or_else(|_| Arc::new(Mutex::new(Vec::new())))
             },
         }
     }
@@ -55,13 +60,13 @@ impl CollectionManager {
     }
 
     /// Load all collections from the storage file
-    fn load_collections_from_file() -> CollectionResult<Vec<Collection>> {
+    fn load_collections_from_file() -> CollectionResult<Arc<Mutex<Vec<Collection>>>> {
         match helper::read_json_from_file::<Vec<Collection>>() {
-            Ok(c) => Ok(c),
+            Ok(c) => Ok(Arc::new(Mutex::new(c))),
             Err(e) => {
                 if let Some(io_err) = e.downcast_ref::<std::io::Error>() {
                     if io_err.kind() == std::io::ErrorKind::NotFound {
-                        Ok(Vec::new())
+                        Ok(Arc::new(Mutex::new(Vec::new())))
                     } else {
                         Err(CollectionError::Other(e.to_string()))
                     }
@@ -72,49 +77,115 @@ impl CollectionManager {
         }
     }
 
-    /// Get a specific collection by name
-    pub fn get_collection(&mut self, name: &str) -> CollectionResult<&mut Collection> {
-        match &mut self.loaded_collections {
-            Some(cols) => cols
-                .iter_mut()
-                .find(|c| c.name == name)
-                .ok_or_else(|| CollectionError::CollectionNotFound(name.to_string())),
-            None => Err(CollectionError::CollectionNotFound(name.to_string())),
+    /// Get loaded collections
+    pub async fn get_collections(&self) -> Vec<Collection> {
+        let collections = self.loaded_collections.lock().await;
+        collections.clone()
+    }
+
+    /// Get a specific Collection by name
+    pub async fn get_collection(&self, name: &str) -> CollectionResult<Option<Collection>> {
+        let collections = self.loaded_collections.lock().await;
+        for c in collections.iter() {
+            if c.name == name {
+                return Ok(Some(c.clone()));
+            }
+        }
+        Err(CollectionError::CollectionNotFound(name.to_string()))
+    }
+
+    /// Get a specific Endpoint by collection name and request name
+    pub async fn get_endpoint(
+        &self,
+        col_name: &str,
+        ep_name: &str,
+    ) -> CollectionResult<Option<Request>> {
+        let collections = self.loaded_collections.lock().await;
+        for c in collections.iter() {
+            if c.name == col_name {
+                if let Some(ref requests) = c.requests {
+                    for r in requests.iter() {
+                        if r.name == ep_name {
+                            return Ok(Some(r.clone()));
+                        }
+                    }
+                }
+            }
+        }
+        Err(CollectionError::EndpointNotFound(format!(
+            "{} in {}",
+            ep_name, col_name
+        )))
+    }
+
+    /// Update an existing collection or add a new one
+    pub async fn update_add_collection(&self, updated: Collection) -> CollectionResult<()> {
+        let mut collections = self.loaded_collections.lock().await;
+        if let Some(pos) = collections.iter().position(|c| c.name == updated.name) {
+            collections[pos] = updated;
+            if !self.in_memory {
+                helper::write_json_to_file(&*collections)?;
+            }
+            Ok(())
+        } else {
+            collections.push(updated);
+            if !self.in_memory {
+                helper::write_json_to_file(&*collections)?;
+            }
+            Ok(())
         }
     }
 
-    /// Get a specific collection imutable by name
-    pub fn get_collection_imutable(&self, name: &str) -> CollectionResult<&Collection> {
-        match &self.loaded_collections {
-            Some(cols) => cols
-                .iter()
-                .find(|c| c.name == name)
-                .ok_or_else(|| CollectionError::CollectionNotFound(name.to_string())),
-            None => Err(CollectionError::CollectionNotFound(name.to_string())),
+    /// Update an existing request within a collection or add a new one
+    pub async fn update_add_request(
+        &self,
+        col_name: &str,
+        ep_name: &str,
+        updated: Request,
+    ) -> CollectionResult<()> {
+        let mut collections = self.loaded_collections.lock().await;
+        if let Some(col_pos) = collections.iter().position(|c| c.name == col_name) {
+            if let Some(ref mut requests) = collections[col_pos].requests {
+                if let Some(req_pos) = requests.iter().position(|r| r.name == ep_name) {
+                    requests[req_pos] = updated;
+                    if !self.in_memory {
+                        helper::write_json_to_file(&*collections)?;
+                    }
+                    return Ok(());
+                } else {
+                    requests.push(updated);
+                    if !self.in_memory {
+                        helper::write_json_to_file(&*collections)?;
+                    }
+                    return Ok(());
+                }
+            }
         }
+        Err(CollectionError::CollectionNotFound(col_name.to_string()))
     }
 
-    /// Get a specific endpoint from a collection
-    pub fn get_endpoint(&mut self, col_name: &str, ep_name: &str) -> CollectionResult<Request> {
-        let col = self.get_collection(col_name)?;
-        col.get_request(ep_name)
-            .ok_or_else(|| CollectionError::EndpointNotFound(ep_name.to_string()))
+    /// Delete a collection
+    pub async fn delete_collection(&self, name: &str) -> CollectionResult<()> {
+        match self.get_collection(name).await {
+            Ok(_) => {
+                let mut collections = self.loaded_collections.lock().await;
+                collections.retain(|c| c.name != name);
+                if !self.in_memory {
+                    helper::write_json_to_file(&*collections)?;
+                }
+                Ok(())
+            }
+            Err(_) => Err(CollectionError::CollectionNotFound(name.to_string())),
+        }
     }
 
     /// Save collections to the storage file
-    pub fn save_collections(self) -> CollectionResult<()> {
+    pub async fn save_loaded_collections(self) -> CollectionResult<()> {
         if !self.in_memory {
-            if let Some(collections) = self.loaded_collections {
-                helper::write_json_to_file(&collections)?;
-                Ok(())
-            } else {
-                Err(CollectionError::Other(
-                    "No collections loaded to save".to_string(),
-                ))
-            }
-        } else {
-            Ok(())
+            let collections = self.loaded_collections.lock().await;
+            helper::write_json_to_file(&*collections)?;
         }
+        Ok(())
     }
 }
 
@@ -129,30 +200,30 @@ mod tests {
         CollectionManager::new(Some("test.json".to_string()), false)
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn test_load_collections() {
+    async fn test_load_collections() {
         let manager = setup_test_manager();
-        let result = manager.loaded_collections;
-        assert!(result.is_some());
+        let result = manager.get_collections().await;
+        assert!(!result.is_empty());
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn test_get_collection() {
-        let mut manager = setup_test_manager();
+    async fn test_get_collection() {
+        let manager = setup_test_manager();
 
-        let result = manager.get_collection("coman");
+        let result = manager.get_collection("coman").await;
 
         assert!(result.is_ok());
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn test_save_collections() {
+    async fn test_save_collections() {
         let manager = setup_test_manager();
 
-        let result = manager.save_collections();
+        let result = manager.save_loaded_collections().await;
         assert!(result.is_ok());
     }
 }

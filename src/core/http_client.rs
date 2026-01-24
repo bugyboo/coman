@@ -124,8 +124,11 @@ impl HttpClient {
         ep_name: &str,
     ) -> HttpResult<HttpResponse> {
         let col = manager
-            .get_collection_imutable(col_name)
-            .map_err(|e| HttpError::Other(e.to_string()))?;
+            .get_collection(col_name)
+            .await
+            .map_err(|e| HttpError::Other(e.to_string()))?
+            .ok_or_else(|| HttpError::Other(format!("Collection '{}' not found", col_name)))?;
+
         let req = col.get_request(ep_name).ok_or_else(|| {
             HttpError::Other(format!(
                 "Endpoint '{}' not found in collection '{}'",
