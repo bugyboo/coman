@@ -107,10 +107,15 @@ impl RequestCommands {
                 })
                 .await
         } else if is_text {
+            let body_text = if !stdin_input.is_empty() {
+                String::from_utf8_lossy(&stdin_input).to_string()
+            } else {
+                body
+            };            
             client
                 .request(method, &current_url)
                 .headers(headers.into_iter().collect())
-                .body(String::from_utf8_lossy(&stdin_input).as_ref())
+                .body(&body_text)
                 .send()
                 .await
         } else {

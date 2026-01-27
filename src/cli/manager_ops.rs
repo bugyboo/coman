@@ -164,39 +164,41 @@ impl ManagerCommands {
                         merge_headers(col.headers.clone(), &headers_opt.unwrap_or(vec![]));
                     manager.update_add_collection(col).await?;
                 } else {
-                    let mut ep = manager
-                        .get_endpoint(collection, endpoint)
-                        .await?
+                    // let mut ep = manager
+                    //     .get_endpoint(collection, endpoint)
+                    //     .await?
+                    //     .ok_or("Endpoint not found")?;
+                    let ep = col
+                        .requests
+                        .as_mut()
+                        .and_then(|reqs| reqs.iter_mut().find(|r| r.name == *endpoint))
                         .ok_or("Endpoint not found")?;
                     // Update endpoint
-                    let url_opt = if url.is_empty() {
-                        None
-                    } else {
-                        Some(url.as_str())
-                    };
-                    let headers_opt = if headers.is_empty() {
-                        None
-                    } else {
-                        Some(headers)
-                    };
+                    if !url.is_empty() {
+                        ep.endpoint = url.clone();
+                    }
+                    if !headers.is_empty() {
+                        ep.headers = headers.clone();
+                    }
                     let body_opt = if body.is_empty() {
-                        Some(String::new()) // Empty body clears the existing body
+                        None
+                    } else if body.trim().is_empty() {
+                        Some(String::new())
                     } else {
-                        Some(body.clone())
+                        Some(body.to_string())
                     };
-                    ep.endpoint = url_opt.unwrap_or(&ep.endpoint).to_string();
-                    ep.headers = if let Some(h) = headers_opt {
-                        h.clone()
+
+                    ep.body = if let Some(b) = body_opt {
+                        Some(b)
                     } else {
-                        ep.headers.clone()
+                        ep.body.clone()
                     };
-                    ep.body = body_opt;
                     manager
                         .update_endpoint(
                             collection,
                             &ep.name,
-                            url_opt,
-                            Some(ep.headers),
+                             Some(&ep.endpoint),
+                            Some(ep.headers.clone()),
                             ep.body.clone(),
                         )
                         .await?;
