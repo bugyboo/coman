@@ -197,7 +197,7 @@ impl ManagerCommands {
                         .update_endpoint(
                             collection,
                             &ep.name,
-                             Some(&ep.endpoint),
+                            Some(&ep.endpoint),
                             Some(ep.headers.clone()),
                             ep.body.clone(),
                         )

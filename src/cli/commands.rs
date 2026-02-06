@@ -37,6 +37,14 @@ pub enum Commands {
 
         #[clap(short, long, required = false, default_value = "false")]
         stream: bool,
+
+        #[clap(
+            short,
+            long,
+            required = false,
+            help = "Input data for the request body (can be used with -v) Example: -o 'lines,34-35' to print lines 34 to 35 of the response body' or -o 'lines' to print all lines of the response body'"
+        )]
+        output: Option<String>,
     },
 
     #[command(about = "Running collections endpoints")]
@@ -49,6 +57,9 @@ pub enum Commands {
 
         #[clap(short, long, required = false, default_value = "false")]
         stream: bool,
+
+        #[clap(short, long, required = false)]
+        output: Option<String>,
     },
 
     #[command(about = "Print request URL with headers and body")]
@@ -79,11 +90,12 @@ impl fmt::Display for Commands {
                 command,
                 verbose,
                 stream,
+                output,
             } => {
                 write!(
                     f,
-                    "Req Command: {} (verbose: {}) (stream: {})",
-                    command, verbose, stream
+                    "Req Command: {} (verbose: {}) (stream: {}) (output: {:?})",
+                    command, verbose, stream, output
                 )
             }
             Commands::Run {
@@ -91,11 +103,12 @@ impl fmt::Display for Commands {
                 endpoint,
                 verbose,
                 stream,
+                output,
             } => {
                 write!(
                     f,
-                    "Run Command: collection: '{}', endpoint: '{}', verbose: {}, stream: {}",
-                    collection, endpoint, verbose, stream
+                    "Run Command: collection: '{}', endpoint: '{}', verbose: {}, stream: {}, output: {:?}",
+                    collection, endpoint, verbose, stream, output
                 )
             }
             Commands::Url {
@@ -159,6 +172,7 @@ impl Commands {
         verbose: &bool,
         stdin_input: &Vec<u8>,
         stream: &bool,
+        output: &Option<String>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         if *verbose {
             println!(
@@ -171,7 +185,9 @@ impl Commands {
             .await
             .ok_or("Endpoint not found")?;
 
-        command.run(*verbose, stdin_input.to_owned(), *stream).await
+        command
+            .run(*verbose, stdin_input.to_owned(), *stream, output)
+            .await
     }
 
     pub async fn run(&self, stdin_input: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
@@ -196,14 +212,16 @@ impl Commands {
                 command,
                 verbose,
                 stream,
-            } => command.run(*verbose, stdin_input, *stream).await,
+                output,
+            } => command.run(*verbose, stdin_input, *stream, output).await,
             Commands::Run {
                 collection,
                 endpoint,
                 verbose,
                 stream,
+                output,
             } => {
-                self.run_request(collection, endpoint, verbose, &stdin_input, stream)
+                self.run_request(collection, endpoint, verbose, &stdin_input, stream, output)
                     .await
             }
             Commands::Url {

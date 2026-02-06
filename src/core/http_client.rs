@@ -159,7 +159,6 @@ impl HttpClient {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
 
     use crate::core::utils::build_header_map;
 
@@ -180,7 +179,7 @@ mod tests {
             version: "HTTP/1.1".to_string(),
             status: 200,
             status_text: "OK".to_string(),
-            headers: HashMap::new(),
+            headers: Vec::new(),
             body: String::new(),
             elapsed_ms: 0,
             url: String::new(),

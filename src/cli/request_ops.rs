@@ -111,7 +111,7 @@ impl RequestCommands {
                 String::from_utf8_lossy(&stdin_input).to_string()
             } else {
                 body
-            };            
+            };
             client
                 .request(method, &current_url)
                 .headers(headers.into_iter().collect())
@@ -145,6 +145,7 @@ impl RequestCommands {
         verbose: bool,
         stdin_input: Vec<u8>,
         stream: bool,
+        output: &Option<String>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let response = Self::execute_request(self, verbose, stdin_input, stream).await;
 
@@ -154,7 +155,7 @@ impl RequestCommands {
                     println!("{:?}", resp.version);
                     self.print_request_method(&resp.url, resp.status, elapsed);
                 }
-                Self::print_request_response(&resp, verbose, stream).await
+                Self::print_request_response(&resp, verbose, stream, output)
             }
             Err(err) => Err(err),
         }

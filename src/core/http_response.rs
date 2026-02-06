@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 /// HTTP Response
 #[derive(Debug, Clone)]
 pub struct HttpResponse {
@@ -10,7 +8,7 @@ pub struct HttpResponse {
     /// Response status text
     pub status_text: String,
     /// Response headers
-    pub headers: HashMap<String, String>,
+    pub headers: Vec<(String, String)>,
     /// Response body as string
     pub body: String,
     /// Response body as bytes (for binary data)

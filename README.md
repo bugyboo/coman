@@ -184,6 +184,7 @@ coman req [OPTIONS] <COMMAND>
 **Options**:
 - `-v, --verbose`: Verbose output
 - `-s, --stream`: Stream the request/response (read bytes from stdin and send as the request body or multipart data to the endpoint)
+- `-o --output`: Input data for the request body (can be used with -v) Example: -o 'lines,34-35' -o 'json,message'
 - `-h, --help`: Print help
 
 ### Running Collections Endpoints (`run`)
@@ -198,6 +199,7 @@ coman run [OPTIONS] <COLLECTION> <ENDPOINT>
 **Options**:
 - `-v, --verbose`: Verbose output
 - `-s, --stream`: Stream the request/response (output response as bytes)
+- `-o --output`: Input data for the request body (can be used with -v) Example: -o 'lines,34-35' -o 'json,message'
 - `-h, --help`: Print help
 
 ### Print Request URL (`url`)
