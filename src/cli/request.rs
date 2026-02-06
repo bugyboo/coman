@@ -81,10 +81,108 @@ impl RequestCommands {
         println!("{}", body.italic());
     }
 
-    pub async fn print_request_response(
+    pub fn print_lines_with_numbers(lines: &Vec<&str>, line_numbers: &[usize]) {
+        for (i, line) in lines.iter().enumerate() {
+            if line_numbers.contains(&(i + 1)) {
+                println!("{}: {}", (i + 1).to_string().bright_cyan(), line);
+            }
+        }
+    }
+
+    pub fn print_response_body(body: &str, output: &str) {
+        if output.starts_with("lines") {
+            let parts: Vec<&str> = output.split(',').collect();
+            let lines: Vec<&str> = body.lines().collect();
+            if parts.len() >= 2 {
+                // try to parse line numbers 2-3-6 or 3-6 range ..etc
+                let range_parts: Vec<&str> = parts[1].split('-').collect();
+                if range_parts.len() == 1 {
+                    if let Ok(line_num) = range_parts[0].parse::<usize>() {
+                        if line_num > 0 && line_num <= lines.len() {
+                            println!(
+                                "{}: {}",
+                                line_num.to_string().bright_cyan(),
+                                lines[line_num - 1]
+                            );
+                        } else {
+                            eprintln!(
+                                "Line number {} is out of range. The response body has {} lines.",
+                                line_num,
+                                lines.len()
+                            );
+                        }
+                    } else {
+                        eprintln!("Invalid line number specified. Expected format: 'lines,line' e.g. 'lines,34'");
+                    }
+                } else if range_parts.len() == 2 {
+                    if let (Ok(start), Ok(end)) = (
+                        range_parts[0].parse::<usize>(),
+                        range_parts[1].parse::<usize>(),
+                    ) {
+                        if start > 0 && end <= lines.len() && start <= end {
+                            for i in start..=end {
+                                println!("{}: {}", i.to_string().bright_cyan(), lines[i - 1]);
+                            }
+                        } else {
+                            eprintln!("Invalid line range specified. Ensure that start and end are within the range of the response body lines and that start is less than or equal to end.");
+                        }
+                    } else {
+                        eprintln!("Invalid line range specified. Expected format: 'lines,start-end' e.g. 'lines,34-35'");
+                    }
+                } else if range_parts.len() > 2 {
+                    // print specified lines e.g. 'lines,34-35-40' to print lines 34, 35 and 40
+                    let mut line_numbers = Vec::new();
+                    for part in range_parts {
+                        if let Ok(line_num) = part.parse::<usize>() {
+                            if line_num > 0 && line_num <= lines.len() {
+                                line_numbers.push(line_num);
+                            }
+                        } else {
+                            eprintln!("Invalid output format. Expected format: 'lines,start-end' or 'lines'");
+                        }
+                    }
+                    Self::print_lines_with_numbers(&lines, &line_numbers);
+                } else {
+                    eprintln!(
+                        "Invalid output format. Expected format: 'lines,start-end' or 'lines'"
+                    );
+                }
+            } else {
+                for (i, line) in lines.iter().enumerate() {
+                    println!("{}: {}", (i + 1).to_string().bright_cyan(), line);
+                }
+            }
+        } else if output.starts_with("json") {
+            // try to parse the body as JSON and look for a specific key e.g. 'json,data' to print the value of the 'data' key in the JSON response
+            let parts: Vec<&str> = output.split(',').collect();
+            if let Ok(json) = serde_json::from_str::<Value>(body) {
+                if parts.len() == 2 {
+                    let key = parts[1];
+                    if let Some(value) = json.get(key) {
+                        let pretty = serde_json::to_string_pretty(value)
+                            .unwrap_or_else(|_| value.to_string());
+                        println!("{}", pretty.green());
+                    } else {
+                        eprintln!("Key '{}' not found in JSON response.", key);
+                    }
+                } else {
+                    let pretty =
+                        serde_json::to_string_pretty(&json).unwrap_or_else(|_| body.to_string());
+                    println!("{}", pretty.green());
+                }
+            } else {
+                eprintln!("Failed to parse response body as JSON.");
+            }
+        } else {
+            println!("{}", body.italic());
+        }
+    }
+
+    pub fn print_request_response(
         response: &HttpResponse,
         verbose: bool,
         stream: bool,
+        output: &Option<String>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         if verbose && !stream {
             println!("{}", "Response Headers:".to_string().bold().bright_blue());
@@ -95,12 +193,16 @@ impl RequestCommands {
         }
 
         if !stream {
-            //Try parsing the body as JSON
-            if let Ok(json) = response.json::<Value>() {
-                let pretty = serde_json::to_string_pretty(&json)?;
-                println!("{}", pretty.green());
+            if let Some(output) = output {
+                Self::print_response_body(&response.body, output);
             } else {
-                println!("{}", response.body.italic());
+                //Try parsing the body as JSON
+                if let Ok(json) = response.json::<Value>() {
+                    let pretty = serde_json::to_string_pretty(&json)?;
+                    println!("{}", pretty.green());
+                } else {
+                    println!("{}", response.body.italic());
+                }
             }
         }
 

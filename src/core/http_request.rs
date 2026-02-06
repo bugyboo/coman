@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::time::Duration;
 
 use futures::StreamExt;
@@ -123,10 +122,10 @@ impl HttpRequest {
         let url = response.url().to_string();
         let version = format!("{:?}", response.version());
 
-        let mut headers = HashMap::new();
+        let mut headers = Vec::new();
         for (key, value) in response.headers().iter() {
             if let Ok(v) = value.to_str() {
-                headers.insert(key.to_string(), v.to_string());
+                headers.push((key.to_string(), v.to_string()));
             }
         }
 
@@ -196,10 +195,10 @@ impl HttpRequest {
         let url = response.url().to_string();
         let version = format!("{:?}", response.version());
 
-        let mut headers = HashMap::new();
+        let mut headers = Vec::new();
         for (key, value) in response.headers().iter() {
             if let Ok(v) = value.to_str() {
-                headers.insert(key.to_string(), v.to_string());
+                headers.push((key.to_string(), v.to_string()));
             }
         }
 
@@ -269,10 +268,10 @@ impl HttpRequest {
         let url = response.url().to_string();
         let version = format!("{:?}", response.version());
 
-        let mut headers = HashMap::new();
+        let mut headers = Vec::new();
         for (key, value) in response.headers().iter() {
             if let Ok(v) = value.to_str() {
-                headers.insert(key.to_string(), v.to_string());
+                headers.push((key.to_string(), v.to_string()));
             }
         }
 
